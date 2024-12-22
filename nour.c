@@ -321,40 +321,60 @@ void insertDis(FILE *disque, MS *ms, maladie *record, int nbrbloc, const char* n
 
 
 
-bool researchDis(FILE *disque, MS *ms, int searchId, const char* nomFichier) {
+
+
+bool researchDis(FILE *disque, MS *ms, int searchId, const char* nomFichier, int* pt, int* indx) {
     Bloc buffer;
-    int currentBlock = -1;
     int recordFound = 0;
 
-    
-    int pt = lireCaracteristique(disque, nomFichier, 3);
+    *pt = lireCaracteristique(disque, nomFichier, 3);
 
-
-    while (pt != -1) {  
-        fseek(disque, pt * sizeof(Bloc), SEEK_SET);
+    while (*pt != -1) {  
+        fseek(disque, *pt * sizeof(Bloc), SEEK_SET);
         fread(&buffer, sizeof(Bloc), 1, disque);
         //we check if it's a data FILE (==2)
         if (buffer.typedebloc == 2) {
-            for (int j = 0; j < buffer.content.fileData.nbrmaladie; j++) {
+            for (int j = 0; j < FB; j++) {
                 if (buffer.content.fileData.T[j].id == searchId) {
-                    currentBlock = pt;
-                    printf("Record found in block %d, at index %d.\n", currentBlock, j);
+                    *indx = j;
+                    printf("Record found in block %d, at index %d.\n", &pt , j);
                     recordFound = 1;
                     break;
                 }
             }
         }
-
         if (recordFound) return true;
-
-        pt = buffer.content.fileData.next;
+        *pt = buffer.content.fileData.next;
     }
-
     // id not found
     if (!recordFound) 
         return false;
 }
 
+
+
+void suppLogique(FILE *disque, MS *ms, int searchId, const char *nomFichier) {
+
+    Bloc buffer;
+    int currentBlock = -1;
+    bool recordFound = false;
+    int pt = 0;
+    int indx = 0;
+    
+    if (researchDis(disque, ms, searchId, nomFichier, &pt, &indx)) {
+        fseek(disque, pt * sizeof(Bloc), SEEK_SET);
+        fread(&buffer, sizeof(Bloc), 1, disque);
+
+        buffer.content.fileData.T[indx].suprimelogiqument = true;
+
+        fseek(disque, pt * sizeof(Bloc), SEEK_SET);
+        fwrite(&buffer, sizeof(Bloc), 1, disque);
+    }
+    else {
+         printf("\nTHIS ID DOESN'T EXIST ! ");
+    }
+
+}
 
 int main() {
     FILE *disque = fopen("disk.dat", "w+b");
