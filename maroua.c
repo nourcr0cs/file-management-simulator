@@ -1287,6 +1287,99 @@ printf("succes");
 return;
 }
 
+void suprimerFCO(FILE*disque,const char*nomFichier)
+{
+
+Bloc buffer;
+MS*ms;
+int dernierblocmeta=1;//derniere bloc metadonnes pour la supression
+int blocprecedent;
+fichiermetadonnes dernierengmeta;
+int nbrbloc=liremetadonnes(disque,nomFichier,1); // pour engistrer les info avant la supresssion de metadatta
+int adrpremierbloc=liremetadonnes(disque,nomFichier,3);
+
+bool vide;//pour liberer le bloc qui sera vide
+
+adressemetadonnes adress=recherchemetadonnes(disque,nomFichier);
+
+// chercher l'adress de derniere bloc qui stoke metadonnes
+
+while(1)
+{
+    fseek(disque, dernierblocmeta * sizeof(Bloc), SEEK_SET);
+    fread(&buffer, sizeof(Bloc), 1, disque);
+    if (buffer.content.metadataTable.next == -1) break;//pour sortir de la boucle
+    blocprecedent=dernierblocmeta;
+    dernierengmeta=buffer.content.metadataTable.T[buffer.content.metadataTable.nbrMetadonnees-1];// engistré le derniere eng de metadonnes
+    dernierblocmeta=buffer.content.metadataTable.next;
+
+}
+// verifier si apres supression de metadata le dernier bloc sera vide 
+
+if(buffer.content.metadataTable.nbrMetadonnees==1)
+{
+    vide=true;
+}else{vide=false;}
+
+fseek(disque, adress.numerodebloc * sizeof(Bloc), SEEK_SET);//pour suprimer metadonnes est decalé
+fread(&buffer, sizeof(Bloc), 1, disque);
+
+
+
+for (int i = adress.index; i < buffer.content.metadataTable.nbrMetadonnees - 1; i++) {
+
+        buffer.content.metadataTable.T[i] = buffer.content.metadataTable.T[i + 1];
+    }
+
+    buffer.content.metadataTable.T[adress.index]=dernierengmeta;//met a la place de bloc que en va suprimé le dernier eng de meta pour eviter le decalage
+    
+ if(vide){   // suprimer le bloc 
+
+    fseek(disque, blocprecedent * sizeof(Bloc), SEEK_SET);
+    fread(&buffer, sizeof(Bloc), 1, disque);
+
+    buffer.content.metadataTable.next=-1;
+
+// ecrire les changement 
+     fseek(disque, blocprecedent * sizeof(Bloc), SEEK_SET);
+     fwrite(&buffer, sizeof(Bloc), 1, disque);
+
+//mise a jour table d'allocation
+
+Metajourtaballocation(ms,dernierblocmeta, 0);
+
+ }
+
+ // met les bloc de fichier vide 
+
+    int blocActuel = adrpremierbloc;
+    while (blocActuel != -1) {
+        fseek(disque, blocActuel * sizeof(Bloc), SEEK_SET);
+        fread(&buffer, sizeof(Bloc), 1, disque);
+
+        int blocSuivant = buffer.content.fileData.next; // ddresse de bloc suivante
+        memset(&buffer, 0, sizeof(Bloc));               // vider le contenu de bloc
+        buffer.typedebloc = 2;                          // type de Bloc est filedata
+        fseek(disque, blocActuel * sizeof(Bloc), SEEK_SET);
+        fwrite(&buffer, sizeof(Bloc), 1, disque);
+
+        Metajourtaballocation(ms, blocActuel, 0); // Libérer le bloc
+        blocActuel = blocSuivant;
+    }
+
+    printf("Fichier supprimé avec succes.\n");
+    return;
+ }
+
+
+
+
+
+
+
+
+
+
 
 
 
