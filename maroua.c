@@ -36,7 +36,7 @@ typedef struct
     int nbrmaladie;
     int next;
    
-}Bloc;
+}BlocData;
 
 
 
@@ -73,7 +73,7 @@ typedef struct {
 typedef struct {
     union {
         BlocMetadonnees metadataTable;
-        Bloc fileData;
+        BlocData fileData;
         Tableallocation allocation;
         
     } content;
