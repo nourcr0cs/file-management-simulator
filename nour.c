@@ -129,6 +129,23 @@ void initTableAllocation(MS* ms) {
     
 }
 
+void MAJtaballocation(MS *ms, int index, int etat) {
+   
+    if (index < ms->nbrbloc){
+    ms->tablelocation[index].etat = etat; 
+    ms->tablelocation[index].adrdebloc = index;
+        if (etat == 0) {
+            ms->nbrblocutil--; 
+        }else {
+            ms->nbrblocutil++;
+        }
+    }else {
+        printf("MS is full !");
+        return;
+    }
+    
+}
+
 
 
 void creationL_OF(FILE *disque, MS *ms, int nbrbloc) {
@@ -231,6 +248,8 @@ adressemetadonnees recherchemetadonnees(FILE*disque,const char* nomfichier){
 
 }
 
+
+
 /*int lireCaracteristique(FILE *disque, const char *nomFichier, int caracteristique) {
     rewind(disque);
     Bloc buffer;
@@ -300,94 +319,9 @@ int liremetadonnees(FILE*disque, const char* nomFichier, int caracteristique) {
     }
 }
 
-
-bool ajoutermetadonnes(FILE* disque, fichiermetadonnees metadonnes, int taille) {
-    Bloc buffer;
-    int blocActuel = 1
-    int prevBloc = 1;
-    MS* ms;
-    bool allouer = true;
-
-    //
-    if ((ms->nbrblocutil + taille) > ms->nbrbloc) {
-        printf("Espace insuffisant pour créer le fichier.\n");
-        return false;
-    }
-
-    //bloc with index 1 for metadata
-    Metajourtaballocation(disque, 1, 1);
-
-
-    while (blocActuel != -1) {
-        fseek(disque, blocActuel * sizeof(Bloc), SEEK_SET);
-        fread(&buffer, sizeof(Bloc), 1, disque);
-
-        if (buffer.content.metadataTable.nbrMetadonnees < FB) {
-            buffer.content.metadataTable.T[buffer.content.metadataTable.nbrMetadonnees] = metadonnes;
-            buffer.content.metadataTable.nbrMetadonnees++;
-
-            fseek(disque, blocActuel * sizeof(Bloc), SEEK_SET);
-            fwrite(&buffer, sizeof(Bloc), 1, disque);
-
-            return true; 
-        }
-
-        prevBloc = blocActuel;
-        blocActuel = buffer.content.metadataTable.next;
-    }
-
-    
-    if (allouer) {
-        if (ms->nbrbloc == ms->nbrblocutil) {
-            printf("Espace insuffisant pour stocker le fichier !\n");
-            return false; 
-        }
-
-        //find an empty bloc 
-        int place = -1;
-        for (int i = 0; i < ms->nbrbloc; i++) {
-            if (ms->tablelocation[i].etat == 0) {
-                place = i;
-                break;
-            }
-        }
-
-        if (place == -1) {
-            printf("Erreur : Aucun bloc disponible.\n");
-            return false;
-        }
-
-        Metajourtaballocation(disque, place, 1);
-
-        // Faire le chaînage
-        fseek(disque, prevBloc * sizeof(Bloc), SEEK_SET);
-        fread(&buffer, sizeof(Bloc), 1, disque);
-        buffer.content.metadataTable.next = place;
-
-        fseek(disque, prevBloc* sizeof(Bloc), SEEK_SET);
-        fwrite(&buffer, sizeof(Bloc), 1, disque);
-
-        // Initialiser le nouveau bloc pour les métadonnées
-        fseek(disque, place * sizeof(Bloc), SEEK_SET);
-        fread(&buffer, sizeof(Bloc), 1, disque);
-
-        buffer.content.metadataTable.T[0] = metadonnes;
-        buffer.content.metadataTable.nbrMetadonnees = 1;
-        buffer.content.metadataTable.next = -1;
-
-        fseek(disque, place * sizeof(Bloc), SEEK_SET);
-        fwrite(&buffer, sizeof(Bloc), 1, disque);
-
-        return true; //success
-    }
-
-    return false; //echec 
-}
-
-
 void miseAJourMetadonnees(FILE* disque, const char* nomFichier, int champ, int nouvelleValeur) {
     // Recherche l'adresse des métadonnées du fichier
-    adressemetadonnes adresse = recherchemetadonnees(disque, nomFichier);
+    adressemetadonnees adresse = recherchemetadonnees(disque, nomFichier);
 
     // Vérification si le fichier existe
     if (adresse.numerodebloc == -1) {
@@ -429,6 +363,89 @@ void miseAJourMetadonnees(FILE* disque, const char* nomFichier, int champ, int n
     }
 }
 
+
+bool ajoutermetadonnees(FILE* disque, fichiermetadonnees metadonnes, int taille) {
+    Bloc buffer;
+    int blocActuel = 1;
+    int prevBloc = 1;
+    MS* ms;
+    bool allouer = true;
+
+    //
+    if ((ms->nbrblocutil + taille) > ms->nbrbloc) {
+        printf("Espace insuffisant pour créer le fichier.\n");
+        return false;
+    }
+
+    //bloc with index 1 for metadata
+    MAJtaballocation(ms, 1, 1);
+
+
+    while (blocActuel != -1) {
+        fseek(disque, blocActuel * sizeof(Bloc), SEEK_SET);
+        fread(&buffer, sizeof(Bloc), 1, disque);
+
+        if (buffer.content.metadataTable.nbrMetadonnees < FB) {
+            buffer.content.metadataTable.T[buffer.content.metadataTable.nbrMetadonnees] = metadonnes;
+            buffer.content.metadataTable.nbrMetadonnees++;
+
+            fseek(disque, blocActuel * sizeof(Bloc), SEEK_SET);
+            fwrite(&buffer, sizeof(Bloc), 1, disque);
+
+            return true; 
+        }
+
+        prevBloc = blocActuel;
+        blocActuel = buffer.content.metadataTable.next;
+    }
+
+    
+    if (allouer) {
+        if (ms->nbrbloc == ms->nbrblocutil) {
+            printf("Espace insuffisant pour stocker le fichier !\n");
+            return false; 
+        }
+
+        //find an empty bloc 
+        int place = -1;
+        for (int i = 0; i < ms->nbrbloc; i++) {
+            if (ms->tablelocation[i].etat == 0) {
+                place = i;
+                break;
+            }
+        }
+
+        if (place == -1) {
+            printf("Erreur : Aucun bloc disponible.\n");
+            return false;
+        }
+
+        MAJtaballocation(ms, place, 1);
+
+        // Faire le chaînage
+        fseek(disque, prevBloc * sizeof(Bloc), SEEK_SET);
+        fread(&buffer, sizeof(Bloc), 1, disque);
+        buffer.content.metadataTable.next = place;
+
+        fseek(disque, prevBloc* sizeof(Bloc), SEEK_SET);
+        fwrite(&buffer, sizeof(Bloc), 1, disque);
+
+        // Initialiser le nouveau bloc pour les métadonnées
+        fseek(disque, place * sizeof(Bloc), SEEK_SET);
+        fread(&buffer, sizeof(Bloc), 1, disque);
+
+        buffer.content.metadataTable.T[0] = metadonnes;
+        buffer.content.metadataTable.nbrMetadonnees = 1;
+        buffer.content.metadataTable.next = -1;
+
+        fseek(disque, place * sizeof(Bloc), SEEK_SET);
+        fwrite(&buffer, sizeof(Bloc), 1, disque);
+
+        return true; //success
+    }
+
+    return false; //echec 
+}
 
 
 void defregmentation(FILE *disque, MS *ms, const char *nomFichier) {
@@ -486,38 +503,18 @@ void defregmentation(FILE *disque, MS *ms, const char *nomFichier) {
             fwrite(&newBuffer, sizeof(Bloc), 1, disque);
         } else {
             //unused blocks 
-            //MAJtaballocation(ms, blocactuelle, 0);
+        MAJtaballocation(ms, blocactuelle, 0);
         }
 
         blocactuelle = blocsuivant;
     }
-    miseAJourMetadonnees(disque, nomFichier, 1, taillefichierbloc);
+    miseAJourMetadonnees(disque, nomFichier, 1, taillefichierblocs);
     miseAJourMetadonnees(disque, nomFichier, 2, totalEnregistrements);
     
     //Debugger 
     printf("defregmentation functionality check.");
 }
 
-void MAJtaballocation(MS *ms, int index, int etat) {
-
-    MS buffer;  
-    fread(&buffer, sizeof(MS), 1, ms); 
-    
-    if (index < ms->nbrbloc){
-    buffer.tablelocation[index].etat = etat; 
-    if (etat == 0) {
-        buffer.nbrblocutil--; 
-    }else {
-        buffer.nbrblocutil++;
-    }
-    }else {
-        return;
-    }
-    
-    fwrite(&buffer, sizeof(MS), 1, ms);  
-}
-
-void MAJMetadonnees()
 
 maladie insertHelper() {
     maladie m;
@@ -614,8 +611,11 @@ void insertDis(FILE *disque, MS *ms, int nbrbloc, const char* nomFichier) {
     fwrite(&buffer, sizeof(Bloc), 1, disque);
 
     //making the new block 
+    MAJtaballocation(ms, newBlock, 1);
+    /*
     ms->tablelocation[newBlock].etat = 1; 
     ms->tablelocation[newBlock].adrdebloc = newBlock;
+    */
     buffer.content.fileData.nbrmaladie = 0;
     buffer.content.fileData.next = -1;
     buffer.content.fileData.T[buffer.content.fileData.nbrmaladie] = m;
@@ -634,7 +634,7 @@ bool researchDis(FILE *disque, MS *ms, int searchId, const char* nomFichier, int
     Bloc buffer;
     int recordFound = 0;
 
-    *pt = lireCaracteristique(disque, nomFichier, 3);
+    *pt = liremetadonnees(disque, nomFichier, 3);
 
     while (*pt != -1) {  
         fseek(disque, *pt * sizeof(Bloc), SEEK_SET);
@@ -701,7 +701,7 @@ void renameFile(FILE *disque, const char *nomFichier, const char *newName) {
     fseek(disque, adress.numerodebloc *sizeof(Bloc), SEEK_SET);
     fread(&buffer, sizeof(Bloc), 1, disque);
     //once found we copy it 
-    strcpy(buffer.T[adress.index].Nomdufichier, newName);
+    strcpy(buffer.content.metadataTable.T[adress.index].Nomdufichier, newName);
 
     fseek(disque, adress.numerodebloc *sizeof(Bloc), SEEK_SET);
     fwrite(&buffer, sizeof(Bloc), 1, disque);
