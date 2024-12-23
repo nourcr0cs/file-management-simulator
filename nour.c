@@ -74,6 +74,12 @@ typedef struct {
     int typedebloc;        // 1 = metadataTable, 2 = file data, 3 = allocation
 } Bloc;
 
+//for research 
+typedef struct {
+    int numBloc;
+    int deplacement;
+} position;
+
 
 void initMS(MS *ms, int nbrbloc) {
     ms->nbrbloc = nbrbloc;
@@ -161,7 +167,7 @@ void creationL_OF(FILE *disque, MS *ms, int nbrbloc) {
         fseek(disque, metadataBlockIndex * sizeof(Bloc), SEEK_SET);
         fread(&buffer, sizeof(Bloc), 1, disque);
 
-        //we search if there is still some space in the first blockto insert the new metaData
+        //we search if there is still some space in the first block to insert the new metaData
         if (buffer.content.metadataTable.nbrMetadonnees < FB) {
             initMetadonnees(disque, buffer.content.metadataTable.nbrMetadonnees);
             metadataFound = 1;
@@ -630,62 +636,65 @@ void insertDis(FILE *disque, MS *ms, int nbrbloc, const char* nomFichier) {
 
 
 
-bool researchDis(FILE *disque, MS *ms, int searchId, const char* nomFichier, int* pt, int* indx) {
+position researchDis(FILE *disque, int searchId, const char* nomFichier) {
     Bloc buffer;
     int recordFound = 0;
+    position res;
 
-    *pt = liremetadonnees(disque, nomFichier, 3);
+    int numBloc = liremetadonnees(disque, nomFichier, 3);
 
-    while (*pt != -1) {  
-        fseek(disque, *pt * sizeof(Bloc), SEEK_SET);
+    while (numBloc != -1) {  
+        rewind(disque);
+        fseek(disque, numBloc * sizeof(Bloc), SEEK_SET);
         fread(&buffer, sizeof(Bloc), 1, disque);
         //we check if it's a data FILE (==2)
         if (buffer.typedebloc == 2) {
             for (int j = 0; j < buffer.content.fileData.nbrmaladie; j++) {
                 if (buffer.content.fileData.T[j].id == searchId) {
-                    *indx = j;
-                    printf("Record found in block %d, at index %d.\n", &pt , j);
+                    res.deplacement = j;
+                    res.numBloc = numBloc;
                     recordFound = 1;
-                    break;
+                    return res;
                 }
             }
         }
-        if (recordFound) return true;
-        *pt = buffer.content.fileData.next;
+        numBloc = buffer.content.fileData.next;
     }
-    // id not found
+    //id not found
     if (!recordFound) 
-        return false;
+        res.deplacement = -1;
+        return res;
+        
 }
 
 
 
-void suppLogique(FILE *disque, MS *ms, int searchId, const char *nomFichier) {
+void suppLogique(FILE *disque, int searchId, const char *nomFichier) {
 
     Bloc buffer;
     int currentBlock = -1;
     bool recordFound = false;
-    int pt = 0;
-    int indx = 0;
     
-    if (researchDis(disque, ms, searchId, nomFichier, &pt, &indx)) {
-        fseek(disque, pt * sizeof(Bloc), SEEK_SET);
+    position res = researchDis(disque, searchId, nomFichier);
+    if (res.deplacement != -1 ) {
+
+        fseek(disque, res.numBloc * sizeof(Bloc), SEEK_SET);
         fread(&buffer, sizeof(Bloc), 1, disque);
 
-        buffer.content.fileData.T[indx].suprimelogiqument = true;
+        buffer.content.fileData.T[res.deplacement].suprimelogiqument = true;
 
-        fseek(disque, pt * sizeof(Bloc), SEEK_SET);
+        rewind(disque);
+        fseek(disque, res.numBloc * sizeof(Bloc), SEEK_SET);
         fwrite(&buffer, sizeof(Bloc), 1, disque);
     }
     else {
-         printf("\nTHIS ID DOESN'T EXIST  ! ");
+         printf("\nTHIS ID DOESN'T EXIST !! no need for this operation ");
     }
 
 }
 
 
 void suppPhysique(FILE *disque, MS *ms, const char *nomFichier) {
-
  
                 defregmentation(disque, ms, nomFichier);
                 // maybe i will add more later
