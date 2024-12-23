@@ -25,9 +25,9 @@ maladie insertHelper();
 
 void insertDis(FILE *disque, MS *ms, int nbrbloc, const char* nomFichier);
 
-bool researchDis(FILE *disque, MS *ms, int searchId, const char* nomFichier, int* pt, int* indx);
+position researchDis(FILE *disque, int searchId, const char* nomFichier);
 
-void suppLogique(FILE *disque, MS *ms, int searchId, const char *nomFichier);
+void suppLogique(FILE *disque, int searchId, const char *nomFichier);
 
 void suppPhysique(FILE *disque, MS *ms, const char *nomFichier);
 
