@@ -13,15 +13,13 @@ adressemetadonnees recherchemetadonnees(FILE*disque,const char* nomfichier);
 
 int liremetadonnees(FILE*disque, const char* nomFichier, int caracteristique);
 
-bool ajoutermetadonnes(FILE* disque, fichiermetadonnees metadonnes, int taille);
+bool ajoutermetadonnees(FILE* disque, fichiermetadonnees metadonnes, int taille);
 
 void miseAJourMetadonnees(FILE* disque, const char* nomFichier, int champ, int nouvelleValeur);
 
 void defregmentation(FILE *disque, MS *ms, const char *nomFichier);
 
 void MAJtaballocation(MS *ms, int index, int etat);
-
-void MAJMetadonnees(FILE *disque, const char *nomFichier, int champ, int nouvelleValeur);
 
 maladie insertHelper();
 
