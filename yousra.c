@@ -1,243 +1,368 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 
-// Structure représentant un produit
-typedef struct {
-    int id; // Identifiant unique du produit
-    char eleName[30]; // Nom du produit
-    float price; // Prix du produit
-    int nbr; // Quantité disponible
-    char etat[30]; // État du produit ("disponible", "supprimé", etc.)
-} produit;
+#define FB 10  // Nombre maximum d'enregistrements dans un bloc (facteur de bloc)
 
-// Structure contenant les métadonnées d'un fichier
-typedef struct {
-    char FName[20]; // Nom du fichier
-    int nbrBloc; // Nombre de blocs dans le fichier
-    int nbrRecord; // Nombre total d'enregistrements
-    produit *adrele1; // Pointeur vers les enregistrements
-    char OrgGlobale[10]; // Mode d'organisation globale
-    char OrgInterne[12]; // Mode d'organisation interne
-} MetaTOF;
+typedef struct 
+{
+  char Nomdufichier[20];  // Nom du fichier
+  int Taillefichierblocs;  // Nombre de blocs du fichier
+  int Taillefichierenregistrements;  // Nombre d'enregistrements dans le fichier
+  int Adrpremierbloc;  // Adresse du premier bloc
+  int Modeorganisationglobale;  // Mode d'organisation global (0 : chaîne, 1 : autre)
+  int Modeorganisationinterne;  // Mode d'organisation interne (0 : ordonné, 1 : autre)
+} fichiermetadonnes;
 
-// Structure pour représenter la position d'un enregistrement
-typedef struct {
-    int blocNbr; // Numéro du bloc
-    int deplacement; // Position dans le bloc
-} pos;
+typedef struct 
+{
+  int id;  // Identifiant unique pour chaque enregistrement
+  char name[15];  // Nom du patient
+  int age;  // Âge du patient
+  char sexe[10];  // Sexe du patient
+  char adresse[30];  // Adresse du patient
+  int nmbrdevisite;  // Nombre de visites du patient
+  int suprimelogiqument;  // 1 si l'enregistrement est supprimé logiquement, sinon 0
+} maladie;
 
-// Fonction pour créer un fichier
-void creerFichier(MetaTOF *meta, const char *nom, int nbrRecords, const char *orgGlobale, const char *orgInterne) {
-    // Copier le nom du fichier
-    strcpy(meta->FName, nom);
-    // Calculer le nombre de blocs nécessaires (6 enregistrements par bloc)
-    meta->nbrBloc = (nbrRecords + 5) / 6;
-    // Stocker le nombre total d'enregistrements
-    meta->nbrRecord = nbrRecords;
-    // Copier les modes d'organisation
-    strcpy(meta->OrgGlobale, orgGlobale);
-    strcpy(meta->OrgInterne, orgInterne);
-    // Allouer la mémoire pour les enregistrements
-    meta->adrele1 = (produit *)malloc(nbrRecords * sizeof(produit));
-    printf("Fichier %s créé avec %d enregistrements.\n", meta->FName, meta->nbrRecord);
-}
+typedef struct 
+{
+  maladie T[FB];  // Tableau contenant les enregistrements d'un bloc
+  int nbrmaladie;  // Nombre d'enregistrements dans ce bloc
+  int next;  // Adresse du bloc suivant (pour la chaîne)
+} Bloc;
 
-// Fonction pour charger un fichier
-void chargerFichier(MetaTOF *meta) {
-    // Allouer de la mémoire pour les enregistrements
-    meta->adrele1 = (produit *)malloc(meta->nbrRecord * sizeof(produit));
-    if (meta->adrele1) {
-        printf("Blocs nécessaires alloués pour le fichier %s.\n", meta->FName);
-    } else {
-        printf("Erreur d'allocation pour le fichier %s.\n", meta->FName);
-    }
-}
+typedef struct
+{
+  int adrdebloc;  // Adresse du bloc
+  int etat;  // État du bloc (0 : vide, 1 : plein)
+} Tableallocation;
 
-// Fonction pour insérer un nouvel enregistrement
-void insererEnregistrement(MetaTOF *meta, produit newProduit) {
-	int i;
-    for ( i = 0; i < meta->nbrRecord; i++) {
-        // Trouver une position vide pour insérer le produit
-        if (strcmp(meta->adrele1[i].etat, "vide") == 0) {
-            meta->adrele1[i] = newProduit;
-            printf("Enregistrement inséré à la position %d.\n", i);
-            return;
-        }
-    }
-    printf("Pas d'espace disponible pour insérer un nouvel enregistrement.\n");
-}
+typedef struct 
+{
+  int nbrblocutil;  // Nombre de blocs utilisés
+  int nbrbloc;  // Nombre total de blocs disponibles
+  Tableallocation tablelocation[30];  // Tableau de table d'allocation pour chaque bloc
+} MS;
 
-// Fonction pour rechercher un enregistrement
-pos rechercherEnregistrement(MetaTOF *meta, int id) {
-    pos position = {-1, -1}; // Initialisation de la position
-    int i ;
-    for ( i = 0; i < meta->nbrRecord; i++) {
-        if (meta->adrele1[i].id == id) {
-            // Calculer le bloc et le déplacement
-            position.blocNbr = i / 6;
-            position.deplacement = i % 6;
-            printf("Enregistrement trouvé au bloc %d, déplacement %d.\n", position.blocNbr, position.deplacement);
-            return position;
-        }
-    }
-    printf("Enregistrement avec ID %d non trouvé.\n", id);
-    return position;
-}
-
-// Fonction pour supprimer un enregistrement (logique)
-void supprimerLogique(MetaTOF *meta, int id) {
-	int i;
-    for ( i = 0; i < meta->nbrRecord; i++) {
-        if (meta->adrele1[i].id == id) {
-            // Marquer l'enregistrement comme supprimé
-            strcpy(meta->adrele1[i].etat, "supprime");
-            printf("Enregistrement ID %d marqué comme supprimé.\n", id);
-            return;
-        }
-    }
-    printf("Enregistrement avec ID %d non trouvé.\n", id);
-}
-
-// Fonction pour supprimer un enregistrement (physique)
-void supprimerPhysique(MetaTOF *meta) {
-    int index = 0; // Position pour réorganiser les enregistrements
+// Fonction pour créer la table d'allocation
+Tableallocation CreerTableAllocation(MS *ms)
+{
+    Tableallocation TA;  // Déclare une table d'allocation
     int i;
-    for ( i = 0; i < meta->nbrRecord; i++) {
-        if (strcmp(meta->adrele1[i].etat, "supprime") != 0) {
-            meta->adrele1[index++] = meta->adrele1[i];
-        }
+    for ( i = 0; i < ms->nbrbloc; i++)  // Parcours de chaque bloc
+    {
+        TA.adrdebloc = i;  // L'adresse du bloc est l'index du tableau
+        TA.etat = 0;  // Initialement, tous les blocs sont vides
     }
-    // Mettre à jour le nombre d'enregistrements
-    meta->nbrRecord = index;
-    printf("Suppression physique terminée.\n");
+    return TA;  // Retourne la table d'allocation initialisée
 }
 
-// Fonction pour défragmenter un fichier
-void defragmenter(MetaTOF *meta) {
-    supprimerPhysique(meta);
-    // Recalculer le nombre de blocs après la défragmentation
-    meta->nbrBloc = (meta->nbrRecord + 5) / 6;
-    printf("Défragmentation terminée. Nombre de blocs : %d.\n", meta->nbrBloc);
+// Fonction d'initialisation de la mémoire de stockage (MS)
+void InitialiserMS(MS *ms)
+{
+    ms->nbrbloc = 20;  // Initialisation du nombre de blocs à 20
+    ms->nbrblocutil = 0;  // Aucun bloc utilisé au départ
+    ms->tablelocation[0] = CreerTableAllocation(ms);  // Initialise la première table d'allocation
+    printf("MS Initialisée avec %d blocs.\n", ms->nbrbloc);  // Affiche un message de confirmation
 }
+
+// Fonction pour créer un fichier avec les paramètres donnés par l'utilisateur
+void CreerFichier(fichiermetadonnes *file)
+{
+    printf("Entrez le nom du fichier : ");
+    scanf("%s", file->Nomdufichier);  // Demande le nom du fichier à l'utilisateur
+
+    printf("Entrez le nombre d'enregistrements : ");
+    scanf("%d", &file->Taillefichierenregistrements);  // Demande le nombre d'enregistrements
+
+    printf("Entrez le nombre de blocs : ");
+    scanf("%d", &file->Taillefichierblocs);  // Demande le nombre de blocs
+
+    printf("Entrez le mode d'organisation globale (0 : chaîne, 1 : autre) : ");
+    scanf("%d", &file->Modeorganisationglobale);  // Demande le mode d'organisation globale
+
+    printf("Entrez le mode d'organisation interne (0 : ordonné, 1 : autre) : ");
+    scanf("%d", &file->Modeorganisationinterne);  // Demande le mode d'organisation interne
+
+    file->Adrpremierbloc = 0;  // L'adresse du premier bloc est 0 par défaut
+    printf("Fichier '%s' créé avec %d enregistrements et %d blocs.\n", 
+            file->Nomdufichier, file->Taillefichierenregistrements, file->Taillefichierblocs);  // Affiche les informations du fichier
+}
+
+// Fonction pour insérer un enregistrement dans le fichier
+void InsererEnregistrement(MS *ms, fichiermetadonnes *file, maladie nouvelEnregistrement) {
+    int blocTrouve = 0;
+    Bloc *bloc = malloc(sizeof(Bloc));
+    int i, j;
+
+    // Cas 1: Organisation en blocs contigus et ordonnés par ID
+    if (file->Modeorganisationglobale == 0) {
+        for (i = 0; i < ms->nbrbloc; i++) {
+            if (ms->tablelocation[i].etat == 1) {  // Si le bloc est plein
+                for (j = 0; j < FB; j++) {
+                    if (bloc->T[j].id == 0 || bloc->T[j].id > nouvelEnregistrement.id) {
+                        // Décale les enregistrements pour faire de la place à l'insertion
+                        int k;
+                        for ( k = bloc->nbrmaladie - 1; k >= j; k--) {
+                            bloc->T[k + 1] = bloc->T[k];
+                        }
+                        bloc->T[j] = nouvelEnregistrement;  // Insère l'enregistrement à la bonne position
+                        bloc->nbrmaladie++;  // Incrémente le nombre d'enregistrements dans ce bloc
+                        blocTrouve = 1;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (!blocTrouve) {
+            // Si aucun bloc plein n'a été trouvé, essayer d'ajouter dans un bloc vide
+            for (i = 0; i < ms->nbrbloc; i++) {
+                if (ms->tablelocation[i].etat == 0) {  // Si le bloc est vide
+                    bloc->T[bloc->nbrmaladie] = nouvelEnregistrement;
+                    bloc->nbrmaladie++;
+                    ms->tablelocation[i].etat = 1;  // Marque le bloc comme plein
+                    ms->nbrblocutil++;  // Incrémente le nombre de blocs utilisés
+                    blocTrouve = 1;
+                    break;
+                }
+            }
+        }
+
+        if (!blocTrouve) {
+            // Si aucun bloc n'est disponible, demander à l'utilisateur s'il veut ajouter un nouveau bloc
+            printf("Tous les blocs sont pleins. Voulez-vous ajouter un nouveau bloc ? (1 : Oui, 0 : Non): ");
+            int choix;
+            scanf("%d", &choix);
+            if (choix == 1) {
+                ms->nbrbloc++;  // Augmente le nombre total de blocs
+                ms->tablelocation[ms->nbrbloc - 1].etat = 1;  // Marque le nouveau bloc comme plein
+                bloc->T[bloc->nbrmaladie] = nouvelEnregistrement;  // Ajoute l'enregistrement dans ce nouveau bloc
+                bloc->nbrmaladie++;
+                ms->nbrblocutil++;
+                printf("Enregistrement ajouté dans un nouveau bloc.\n");
+            } else {
+                printf("Aucun bloc libre disponible pour l'insertion.\n");
+            }
+        }
+    }
+}
+
+// Fonction pour rechercher un enregistrement par son ID
+void RechercherEnregistrement(MS *ms, fichiermetadonnes *file, int idRecherche)
+{
+    // Recherche dans tous les blocs pour l'enregistrement avec l'ID donné
+    int i;
+    for ( i = 0; i < ms->nbrbloc; i++)
+    {
+        if (ms->tablelocation[i].etat == 1)  // Si le bloc n'est pas vide
+        {
+        	int j;
+            for ( j = 0; j < FB; j++)
+            {
+                if (ms->tablelocation[i].adrdebloc == idRecherche)  // Si l'ID correspond
+                {
+                    printf("Enregistrement trouvé dans le bloc %d.\n", i);  // Affiche l'emplacement du bloc
+                    return;  // Retourne dès que l'enregistrement est trouvé
+                }
+            }
+        }
+    }
+    printf("Enregistrement non trouvé.\n");  // Si l'enregistrement n'est pas trouvé
+}
+
+// Fonction pour supprimer un enregistrement logiquement (marquer comme supprimé)
+void SupprimerLogiquement(MS *ms, fichiermetadonnes *file, int id) {
+    int i, j;
+    int trouve = 0;
+
+    // Recherche de l'enregistrement à supprimer logiquement
+    for (i = 0; i < ms->nbrbloc; i++) {
+        Bloc *bloc = malloc(sizeof(Bloc));
+        for (j = 0; j < bloc->nbrmaladie; j++) {
+            if (bloc->T[j].id == id) {  // Si l'ID correspond à celui recherché
+                // Marquer l'enregistrement comme supprimé logiquement
+                bloc->T[j].suprimelogiqument = 1;  // L'enregistrement est supprimé logiquement
+                printf("Enregistrement avec ID %d supprimé logiquement.\n", id);
+                trouve = 1;
+                break;
+            }
+        }
+        if (trouve) {
+            break;
+        }
+    }
+
+    if (!trouve) {
+        printf("Enregistrement avec ID %d non trouvé.\n", id);
+    }
+}
+
+// Fonction pour supprimer un enregistrement physiquement
+void SupprimerPhysiquement(MS *ms, fichiermetadonnes *file, int id) {
+    int i, j, k;
+    int trouve = 0;
+
+    // Recherche de l'enregistrement à supprimer
+    for (i = 0; i < ms->nbrbloc; i++) {
+        Bloc *bloc = malloc(sizeof(Bloc));
+        for (j = 0; j < bloc->nbrmaladie; j++) {
+            if (bloc->T[j].id == id) {  // Si l'ID correspond à celui recherché
+                // Déplacer les enregistrements suivants pour combler l'espace
+                for (k = j; k < bloc->nbrmaladie - 1; k++) {
+                    bloc->T[k] = bloc->T[k + 1];  // Décaler les enregistrements vers la gauche
+                }
+                bloc->nbrmaladie--;  // Réduire le nombre d'enregistrements dans le bloc
+                printf("Enregistrement avec ID %d supprimé physiquement.\n", id);
+                ms->tablelocation[i].etat = 0;  // Marquer le bloc comme vide
+                trouve = 1;
+                break;
+            }
+        }
+        if (trouve) {
+            break;
+        }
+    }
+
+    if (!trouve) {
+        printf("Enregistrement avec ID %d non trouvé.\n", id);
+    }
+}
+// Fonction pour effectuer la défragmentation (réorganiser les blocs)
+void Defragmenter(MS *ms, fichiermetadonnes *file) {
+    int i, j, k;
+    int blocLibere = 0;
+
+    // Recherche des enregistrements supprimés logiquement
+    for (i = 0; i < ms->nbrbloc; i++) {
+        Bloc *bloc = malloc(sizeof(Bloc));
+        for (j = 0; j < bloc->nbrmaladie; j++) {
+            if (bloc->T[j].suprimelogiqument == 1) {  // Si l'enregistrement est supprimé logiquement
+                // Trouver un enregistrement à déplacer
+                for (k = j + 1; k < bloc->nbrmaladie; k++) {
+                    bloc->T[k - 1] = bloc->T[k];  // Déplacer l'enregistrement vers la gauche
+                }
+                bloc->nbrmaladie--;  // Réduire le nombre d'enregistrements dans le bloc
+                ms->tablelocation[i].etat = 0;  // Marquer le bloc comme vide
+                blocLibere = 1;  // Signaler qu'un bloc a été libéré
+            }
+        }
+    }
+
+    // Re-organisation des enregistrements pour combler l'espace libre
+    if (blocLibere) {
+        for (i = 0; i < ms->nbrbloc; i++) {
+            Bloc *bloc = malloc(sizeof(Bloc));
+            if (ms->tablelocation[i].etat == 0) {  // Si le bloc est vide
+                for (j = i + 1; j < ms->nbrbloc; j++) {
+                    if (ms->tablelocation[j].etat == 1) {  // Si un bloc plein suit
+                        for (k = 0; k < bloc->nbrmaladie; k++) {
+                            bloc->T[k] = bloc->T[k + 1];  // Déplacer les enregistrements pour remplir le bloc
+                        }
+                        bloc->nbrmaladie--;
+                        ms->tablelocation[i].etat = 1;  // Marquer le bloc comme plein
+                    }
+                }
+            }
+        }
+    }
+
+    printf("Défragmentation terminée.\n");
+}
+
 
 // Fonction pour renommer un fichier
-void renommerFichier(MetaTOF *meta, const char *nouveauNom) {
-    strcpy(meta->FName, nouveauNom);
-    printf("Fichier renommé en %s.\n", meta->FName);
+void RenommerFichier(fichiermetadonnes *file, char *nouveauNom)
+{
+    strcpy(file->Nomdufichier, nouveauNom);  // Copie le nouveau nom dans la structure du fichier
+    printf("Fichier renommé en %s.\n", file->Nomdufichier);  // Affiche un message de confirmation
 }
 
-// Fonction pour supprimer un fichier
-void supprimerFichier(MetaTOF *meta) {
-    free(meta->adrele1); // Libérer la mémoire allouée
-    printf("Fichier %s supprimé.\n", meta->FName);
-}
 
-// Fonction pour remplir automatiquement des enregistrements
-void remplirAutomatiquement(MetaTOF *meta) {
-	int i;
-    for ( i = 0; i < meta->nbrRecord; i++) {
-        meta->adrele1[i].id = i + 1;
-        sprintf(meta->adrele1[i].eleName, "Produit %d", i + 1);
-        meta->adrele1[i].price = (float)(i + 1) * 10.0;
-        meta->adrele1[i].nbr = i + 2;
-        strcpy(meta->adrele1[i].etat, "disponible");
-    }
-    printf("Les enregistrements ont été remplis automatiquement.\n");
-}
-// Fonction principale pour tester toutes les fonctionnalités
+   
 int main() {
-    MetaTOF meta;
-    int choix;
-    int id;
-    produit newProduit;
-    pos position;
-    char nouveauNom[20];
+    MS ms;
+    fichiermetadonnes file;
+    maladie nouvelEnregistrement;
+    int choix, idRecherche;
+
+    // Initialisation de la mémoire de stockage
+    InitialiserMS(&ms);
 
     do {
-        printf("\nMenu de gestion des fichiers TOF:\n");
+        printf("\n=== MENU ===\n");
         printf("1. Créer un fichier\n");
-        printf("2. Charger un fichier\n");
-        printf("3. Remplir automatiquement les enregistrements\n");
-        printf("4. Insérer un nouvel enregistrement\n");
-        printf("5. Rechercher un enregistrement\n");
-        printf("6. Supprimer un enregistrement (logique)\n");
-        printf("7. Défragmenter le fichier\n");
-        printf("8. Renommer le fichier\n");
-        printf("9. Supprimer le fichier\n");
+        printf("2. Insérer un enregistrement\n");
+        printf("3. Rechercher un enregistrement\n");
+        printf("4. Supprimer un enregistrement logiquement\n");
+        printf("5. Supprimer un enregistrement physiquement\n");
+        printf("6. Défragmenter la mémoire\n");
+        printf("7. Renommer un fichier\n");
         printf("0. Quitter\n");
-        printf("Votre choix : ");
+        printf("Choisissez une option : ");
         scanf("%d", &choix);
 
         switch (choix) {
             case 1:
-                printf("Nom du fichier : ");
-                scanf("%s", meta.FName);
-                printf("Nombre d'enregistrements : ");
-                scanf("%d", &meta.nbrRecord);
-                printf("Organisation globale : ");
-                scanf("%s", meta.OrgGlobale);
-                printf("Organisation interne : ");
-                scanf("%s", meta.OrgInterne);
-                creerFichier(&meta, meta.FName, meta.nbrRecord, meta.OrgGlobale, meta.OrgInterne);
+                CreerFichier(&file);
                 break;
 
             case 2:
-                chargerFichier(&meta);
+                printf("Entrez les informations de l'enregistrement :\n");
+                printf("ID : ");
+                scanf("%d", &nouvelEnregistrement.id);
+                printf("Nom : ");
+                scanf("%s", nouvelEnregistrement.name);
+                printf("Âge : ");
+                scanf("%d", &nouvelEnregistrement.age);
+                printf("Sexe : ");
+                scanf("%s", nouvelEnregistrement.sexe);
+                printf("Adresse : ");
+                scanf("%s", nouvelEnregistrement.adresse);
+                printf("Nombre de visites : ");
+                scanf("%d", &nouvelEnregistrement.nmbrdevisite);
+                nouvelEnregistrement.suprimelogiqument = 0; // Non supprimé logiquement
+                InsererEnregistrement(&ms, &file, nouvelEnregistrement);
                 break;
 
             case 3:
-                remplirAutomatiquement(&meta);
+                printf("Entrez l'ID de l'enregistrement à rechercher : ");
+                scanf("%d", &idRecherche);
+                RechercherEnregistrement(&ms, &file, idRecherche);
                 break;
 
             case 4:
-                printf("ID : ");
-                scanf("%d", &newProduit.id);
-                printf("Nom : ");
-                scanf("%s", newProduit.eleName);
-                printf("Prix : ");
-                scanf("%f", &newProduit.price);
-                printf("Quantité : ");
-                scanf("%d", &newProduit.nbr);
-                strcpy(newProduit.etat, "disponible");
-                insererEnregistrement(&meta, newProduit);
+                printf("Entrez l'ID de l'enregistrement à supprimer logiquement : ");
+                scanf("%d", &idRecherche);
+                SupprimerLogiquement(&ms, &file, idRecherche);
                 break;
 
             case 5:
-                printf("ID à rechercher : ");
-                scanf("%d", &id);
-                position = rechercherEnregistrement(&meta, id);
-                if (position.blocNbr != -1) {
-                    printf("Enregistrement trouvé au bloc %d, déplacement %d.\n", position.blocNbr, position.deplacement);
-                }
+                printf("Entrez l'ID de l'enregistrement à supprimer physiquement : ");
+                scanf("%d", &idRecherche);
+                SupprimerPhysiquement(&ms, &file, idRecherche);
                 break;
 
             case 6:
-                printf("ID à supprimer : ");
-                scanf("%d", &id);
-                supprimerLogique(&meta, id);
+                Defragmenter(&ms, &file);
                 break;
 
-            case 7:
-                defragmenter(&meta);
-                break;
-
-            case 8:
-                printf("Nouveau nom du fichier : ");
+            case 7: {
+                char nouveauNom[20];
+                printf("Entrez le nouveau nom du fichier : ");
                 scanf("%s", nouveauNom);
-                renommerFichier(&meta, nouveauNom);
+                RenommerFichier(&file, nouveauNom);
                 break;
-
-            case 9:
-                supprimerFichier(&meta);
-                break;
+            }
 
             case 0:
                 printf("Au revoir !\n");
                 break;
 
             default:
-                printf("Choix invalide. Veuillez réessayer.\n");
+                printf("Option invalide. Veuillez réessayer.\n");
         }
     } while (choix != 0);
 
