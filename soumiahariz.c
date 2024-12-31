@@ -29,9 +29,14 @@ typedef struct {
     int adrdebloc; // adresse de bloc
     int etat;      // si vide = 0 pleine = 1
 } Tableallocation;
-
+typedef struct {
+    int nbrblocutil; // nombre de bloc utilise
+    int nbrbloc;
+    int FB;
+} MS;
 typedef struct {
     Tableallocation tablelocation[20];
+    MS ms;
 } BlocAllocation;
 
 typedef struct {
@@ -46,11 +51,6 @@ typedef struct
     int next;
    
 }BlocData;
-typedef struct {
-    int nbrblocutil; // nombre de bloc utilise
-    int nbrbloc;
-    int FB;
-} MS;
 
 typedef struct {
     union {
@@ -79,32 +79,61 @@ void metajourtableallocation(FILE* disque, int blocIndex, int etat) {
     fwrite(&buffer, sizeof(Bloc), 1, disque);
 }
 
-void CreeTableAllocation(MS *ms, FILE* disque) {
+void CreeTableAllocation( FILE* disque) {
     Bloc buffer;
-    buffer.typedebloc = 3; // Set the block type to 3 for table allocation
-    for (int i = 0; i < ms->nbrbloc; i++) {
+    buffer.typedebloc=3;
+    fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
+    fread(&buffer, sizeof(Bloc), 1, disque);
+
+    // Write the initial allocation table in MC
+    for (int i = 0; i < buffer.content.allocation.ms.nbrbloc; i++) {
         buffer.content.allocation.tablelocation[i].adrdebloc = i;
         buffer.content.allocation.tablelocation[i].etat = 0;
     }
 
     // Write the initial allocation table to the first block
-    fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
+     fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
     fwrite(&buffer, sizeof(Bloc), 1, disque);
 
     // Mark the first block as allocated
     metajourtableallocation(disque, 0, 1);
 }
 
-void ViderMs(FILE* disque, MS *ms) {
-    ms->nbrblocutil = 1; // nombre de bloc utilise
-    CreeTableAllocation(ms, disque); // revenir à la 1er état 
+void ViderMs(FILE* disque) {
+    Bloc buffer;
+    buffer.typedebloc=3;
+      fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
+      fread(&buffer, sizeof(Bloc), 1, disque);
+
+    buffer.content.allocation.ms.nbrblocutil = 1; // nombre de bloc utilise
+   // Write the initial allocation table in MC
+    for (int i = 0; i < buffer.content.allocation.ms.nbrbloc; i++) {
+        buffer.content.allocation.tablelocation[i].adrdebloc = i;
+        buffer.content.allocation.tablelocation[i].etat = 0;
+    }
+
+    // Write the initial allocation table to the first block
+     fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
+    fwrite(&buffer, sizeof(Bloc), 1, disque);
+
+    // Mark the first block as allocated
+    metajourtableallocation(disque, 0, 1);
 }
 
-void InitMs(MS *ms, FILE* disque) {
-    ms->nbrbloc = 20;
-    ms->FB = 20; // Nombre maximum d'enregistrements dans un bloc c'est le facteur du blocage
-    ms->nbrblocutil = 1;
-    CreeTableAllocation(ms, disque);
+void InitMs( FILE* disque) {
+    Bloc buffer;
+    buffer.typedebloc=3;
+     fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
+      fread(&buffer, sizeof(Bloc), 1, disque);
+
+    buffer.content.allocation.ms.nbrbloc = 20;
+    buffer.content.allocation.ms.FB = 20; // Nombre maximum d'enregistrements dans un bloc c'est le facteur du blocage
+    buffer.content.allocation.ms.nbrblocutil = 1;
+    CreeTableAllocation( disque);
+    // Write the initial allocation table to the first block
+     fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
+    fwrite(&buffer, sizeof(Bloc), 1, disque);
+
 }
 
 // Main function for testing
@@ -116,10 +145,10 @@ int main() {
         return EXIT_FAILURE;
     }
 
-    InitMs(&ms, disque);
+    InitMs( disque);
     printf("Initialisation de MS et création de la table d'allocation.\n");
 
-    ViderMs(disque, &ms);
+    ViderMs(disque);
     printf("MS vidé.\n");
 
     // Test updating the allocation table
