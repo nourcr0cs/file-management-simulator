@@ -43,14 +43,16 @@ typedef struct
 typedef struct
 {
   int adrdebloc; // adresse de bloc
-  int etat;      // si vide = 0 pleine = 1
+  int etat; 
+     // si vide = 0 pleine = 1
 }Tableallocation;
 
 typedef struct
 {
 
   int nbrblocutil; //nombre de bloc utilise
-  int nbrbloc;
+  int nbrbloc; 
+  int fb;
 
 }MS;
 
@@ -70,6 +72,8 @@ typedef struct {
 
 typedef struct {
     Tableallocation tablelocation[facteur_blocage];
+    int nbrblocutil; //nombre de bloc utilise
+    int nbrbloc; 
 } BlocAllocation;
 
 typedef struct {
@@ -123,7 +127,7 @@ void ViderMs(FILE* disque, MS *ms) {
 
 void InitMs(MS *ms, FILE* disque) {
     ms->nbrbloc = 20;
-
+    ms->fb=facteur_blocage;
     ms->nbrblocutil = 1;
     CreeTableAllocation(ms, disque);
 }
@@ -383,8 +387,14 @@ void miseAJourMetadonnees(FILE* disque, const char* nomFichier, int champ, int n
 }
 
 
-void creerfichierCO(FILE*disque,MS*ms)
+char* creerfichierCO(FILE*disque,MS*ms)
 {
+
+      char* nomFichier = (char*)malloc(20 * sizeof(char)); // Dynamically allocate memory for the file name
+    if (!nomFichier) {
+        printf("Erreur : Allocation de mémoire échouée.\n");
+        return NULL;
+    }
 
 // nbrbloc c'est le nombre de bloc entré par utilisateur
   Bloc buffer;
@@ -396,41 +406,49 @@ printf("Donner le nom du fichier : \n");
 scanf("%s",metadonnes.Nomdufichier);
 
 printf("Donner la taille de fichier en enregistrement : \n");
-scanf("%d",metadonnes.Taillefichierenregistrements);
+scanf("%d",&metadonnes.Taillefichierenregistrements);
 
 printf("Donner le mode d'organisation globale : \n");
-scanf("%d",metadonnes.Modeorganisationglobale);
+scanf("%d",&metadonnes.Modeorganisationglobale);
 
 printf("Donner le mode d'organisation interne : \n");
-scanf("%d",metadonnes.Modeorganisationinterne);
+scanf("%d",&metadonnes.Modeorganisationinterne);
 
  int taille = ceil((double)metadonnes.Taillefichierenregistrements / facteur_blocage)+1; //calculer le nombre de bloc qui stoke les enregistrement de fichier
  metadonnes.Taillefichierblocs=taille;
 
- if((ms->nbrblocutil+taille)<ms->nbrbloc)
- {
-     printf("espace insufisant");
-
- }
+  // Check for sufficient space
+    if ((ms->nbrblocutil + taille) > ms->nbrbloc) {
+        printf("Espace insuffisant.\n");
+        free(nomFichier); // Free allocated memory before returning
+        return NULL;
+    }
 
 bool succes;
 succes =ajoutermetadonnes(disque,metadonnes,taille);
 
-if(succes)
-{
-printf("le fichier a été creer avec succes");
-}
-else
-{printf("espace insufisant");}
-return;
+ if (succes) {
+        printf("Le fichier a été créé avec succès.\n");
+        strcpy(nomFichier, metadonnes.Nomdufichier); // Copy the file name to the allocated buffer
+        return nomFichier; // Return the dynamically allocated file name
+    } else {
+        printf("Erreur : espace insuffisant pour créer le fichier.\n");
+        free(nomFichier); // Free allocated memory before returning
+        return NULL;
+    }
 }
 
-
-void chargerfichier(FILE* disque, MS* ms, const char* nomFichier) {
+void chargerfichier(FILE* disque, MS* ms) {
+    
+    
+    
+    
     Bloc buffer;
+    char* nomFichier;
 
     // Récupérer les métadonnées du fichier
     fichiermetadonnes metadonnes;
+    nomFichier=creerfichierCO(disque,ms);
     adressemetadonnes adresse = recherchemetadonnes(disque, nomFichier);
 
     if (adresse.numerodebloc == -1) {
@@ -1587,18 +1605,9 @@ if (!disque) {
                 suprimerFCO(disque, nomFichier);
                 break;
             }
-            case 8: {
-
-
-    // Appeler la fonction pour créer un fichier
-    creerfichierCO(disque, &ms);
-
-    char nomFichier[20];
-    printf("Entrez le nom du fichier pour le charger : ");
-    scanf("%s", nomFichier);
-
+            case 8: { 
     // Appeler la fonction pour charger le fichier
-    chargerfichier(disque, &ms, nomFichier);
+    chargerfichier(disque, &ms);
 
     break;
 }
