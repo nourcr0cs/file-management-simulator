@@ -1,13 +1,64 @@
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
-#define FB 10
+typedef struct {
+    char Nomdufichier[20];
+    int Taillefichierblocs;
+    int Taillefichierenregistrements;
+    int Adrpremierbloc;  // adresse du 1 bloc 
+    int Modeorganisationglobale; // si est =0 alors chaine
+    int Modeorganisationinterne;  // si est =0 alors ordonne
+} fichiermetadonnes;
 
-// Déclarations des structures (comme fournies dans la requête)
+typedef struct {
+    int id;               
+    char name[15];  
+    int age;
+    char sexe[10];
+    char adresse[30];
+    int nmbrdevisite;
+    int suprimelogiqument; // 1 si est suprimé logiquement
+} maladie;
 
-// Prototypes des fonctions
+typedef struct {
+    int adrdebloc; // adresse de bloc
+    int etat;      // si vide = 0 pleine = 1
+} Tableallocation;
 
+typedef struct {
+    int nbrblocutil; // nombre de bloc utilisé
+    int nbrbloc;
+    int FB;
+} MS;
+
+typedef struct {
+    Tableallocation tablelocation[20];
+    MS ms;
+} BlocAllocation;
+
+typedef struct {
+    fichiermetadonnes T[20]; // Tableau de métadonnées
+    int nbrMetadonnees;       // Nombre actuel de métadonnées dans ce bloc
+    int next;
+} BlocMetadonnees;
+
+typedef struct {
+    maladie T[20];
+    int nbrmaladie;
+    int next;
+} BlocData;
+
+typedef struct {
+    union {
+        BlocMetadonnees metadataTable;
+        BlocData fileData;
+        BlocAllocation allocation;
+    } content;
+    int typedebloc; // 1 = metadata, 2 = file data, 3 = allocation
+} Bloc;
+
+// Déclaration de la fonction afficherEtatMemoire avant main
+void afficherEtatMemoire(BlocAllocation *blocAlloc);
 
 int main() {
     int choix;
@@ -33,189 +84,51 @@ int main() {
 
         switch(choix) {
             case 1:
-                  printf("initialisation de la memoir secondaire");
-                ///soumia function de initms
+                printf("Initialisation de la mémoire secondaire\n");
+                // Appeler la fonction d'initialisation ici
                 break;
-            case 2://creation dun fichier
-                printf("creation d'un fichier");
+            case 2:
+                printf("Création d'un fichier\n");
                 printf("Votre choix d'organisation globale: ");
                 scanf("%d", &modeG);
                 printf("Votre choix d'organisation interne: ");
                 scanf("%d", &modeI);
-                if(modeG == 0 ){
-                    if(modeI == 0){
-                        //le nom de la function creation org=chaine,ordonne
-                    }
-                    else{
-                        //le nom de la function creation org=chaine,nomordonne
-                    }
-                }
-                else
-                {
-                   if(modeI == 0){
-                        //le nom de la function creation org=conti,ordonne
-                    }
-                    else{
-                        //le nom de la function creation org=conti,nomordonne
-                    } 
-                }
-                printf("Fichier telecharger ")
+                // Créer le fichier en fonction des choix d'organisation
                 break;
             case 3:
                 // Afficher l'état de la mémoire secondaire
-                printf("etat de la MS");
-                rewind(ms);
-                fread(&buff , sizeof(bloc) , 1, ms );//metre la table d alocation dans mc
-                printf("\n--- Etat de la mémoire secondaire ---\n");
-                for (int i = 0; i < ms.nbrbloc; i++) {
-                    if (ms.tablelocation[i].etat == 0) {
-                        printf("Bloc %d : Libre\n", i);
-                    } else {
-                        printf("Bloc %d : Occupé\n", i);
-                    }
-                }
+                afficherEtatMemoire(NULL); // Exemple d'appel
                 break;
             case 4:
-                printf("Affichage de meta donne de fichier :");
-                //recherche meta donne marwa
-                //afficher metta donne marwa
+                printf("Affichage des métadonnées du fichier :\n");
+                // Afficher les métadonnées
                 break;
-            case 5://recherche enregistrement 
-                 printf("Votre choix d'organisation globale: ");
-                scanf("%d", &modeG);
-                printf("Votre choix d'organisation interne: ");
-                scanf("%d", &modeI);
-                if(modeG == 0 ){
-                    if(modeI == 0){
-                        //le nom de la function  org=chaine,ordonne
-                    }
-                    else{
-                        //le nom de la function org=chaine,nomordonne
-                    }
-                }
-                else
-                {
-                   if(modeI == 0){
-                        //le nom de la function org=conti,ordonne
-                    }
-                    else{
-                        //le nom de la function  org=conti,nomordonne
-                    } 
-                }
+            case 5:
+                printf("Recherche d'enregistrement\n");
                 break;
             case 6:
-                //insererEnregistrement
-                 printf("Votre choix d'organisation globale: ");
-                scanf("%d", &modeG);
-                printf("Votre choix d'organisation interne: ");
-                scanf("%d", &modeI);
-                if(modeG == 0 ){
-                    if(modeI == 0){
-                        //le nom de la function  org=chaine,ordonne
-                    }
-                    else{
-                        //le nom de la function  org=chaine,nomordonne
-                    }
-                }
-                else
-                {
-                   if(modeI == 0){
-                        //le nom de la function org=conti,ordonne
-                    }
-                    else{
-                        //le nom de la function org=conti,nomordonne
-                    } 
-                }
-                printf("enregistrement inseret");
+                printf("Insertion d'enregistrement\n");
                 break;
             case 7:
-                //supprimerEnregistrement
-                 printf("Votre choix d'organisation globale: ");
-                scanf("%d", &modeG);
-                printf("Votre choix d'organisation interne: ");
-                scanf("%d", &modeI);
-                if(modeG == 0 ){
-                    if(modeI == 0){
-                        //le nom de la function  org=chaine,ordonne
-                    }
-                    else{
-                        //le nom de la function org=chaine,nomordonne
-                    }
-                }
-                else
-                {
-                   if(modeI == 0){
-                        //le nom de la function  org=conti,ordonne
-                    }
-                    else{
-                        //le nom de la function  org=conti,nomordonne
-                    } 
-                }
-                printf("enregistrement suprimee");
+                printf("Suppression d'enregistrement\n");
                 break;
             case 8:
-                //defragmenterFichier
-                 printf("Votre choix d'organisation globale: ");
-                scanf("%d", &modeG);
-                printf("Votre choix d'organisation interne: ");
-                scanf("%d", &modeI);
-                if(modeG == 0 ){
-                    if(modeI == 0){
-                        //le nom de la function org=chaine,ordonne
-                    }
-                    else{
-                        //le nom de la function  org=chaine,nomordonne
-                    }
-                }
-                else
-                {
-                   if(modeI == 0){
-                        //le nom de la function n org=conti,ordonne
-                    }
-                    else{
-                        //le nom de la function  org=conti,nomordonne
-                    } 
-                }
-                printf("defragementation faite ");
+                printf("Défragmentation effectuée\n");
                 break;
             case 9:
-            //supp fichier 
-                printf("Votre choix d'organisation globale: ");
-                scanf("%d", &modeG);
-                printf("Votre choix d'organisation interne: ");
-                scanf("%d", &modeI);
-                if(modeG == 0 ){
-                    if(modeI == 0){
-                        //le nom de la function  org=chaine,ordonne
-                    }
-                    else{
-                        //le nom de la function  org=chaine,nomordonne
-                    }
-                }
-                else
-                {
-                   if(modeI == 0){
-                        //le nom de la function  org=conti,ordonne
-                    }
-                    else{
-                        //le nom de la function  org=conti,nomordonne
-                    } 
-                }
-                printf("Fichier suprimee ");
+                printf("Suppression de fichier\n");
                 break;
             case 10:
-                //function renommer fichier
+                printf("Renommage de fichier\n");
                 break;
             case 11:
-                compacterMS();
-                printf("compactage faits");
+                printf("Compactage de la mémoire secondaire\n");
                 break;
             case 12:
-                viderMS();
-                printf("MS vider");
+                printf("Mémoire secondaire vidée\n");
                 break;
             case 0:
-                printf("Programe termine !\n");
+                printf("Programme terminé !\n");
                 break;
             default:
                 printf("Choix invalide. Veuillez réessayer.\n");
@@ -223,5 +136,28 @@ int main() {
     } while (choix != 0);
 
     return 0;
+}
+
+// Définition de la fonction afficherEtatMemoire
+void afficherEtatMemoire(BlocAllocation *blocAlloc) {
+    printf("Etat de la mémoire secondaire (avec des boîtes):\n\n");
+
+    // Afficher les informations globales
+    printf("Nombre total de blocs: %d\n", blocAlloc->ms.nbrbloc);
+    printf("Nombre de blocs utilisés: %d\n", blocAlloc->ms.nbrblocutil);
+    printf("FB (autre info): %d\n\n", blocAlloc->ms.FB);
+
+    // Affichage des blocs avec des boîtes autour de chaque bloc
+    for (int i = 0; i < 20; i++) {
+        const char* etat = (blocAlloc->tablelocation[i].etat == 0) ? "Vide" : "Plein";
+        
+        int largeur = 20 + 2 + 2 * strlen(etat); // pour l'adresse + état, ajustable selon la taille du texte
+        printf("Bloc %d:\n", i + 1);
+        printf("╔%.*s╗\n", largeur, "====================================="); // ligne du dessus (boîte)
+        printf("║ Adresse: %d %*s║\n", blocAlloc->tablelocation[i].adrdebloc, largeur - 15, " "); // Adresse
+        printf("║ Etat   : %s %*s║\n", etat, largeur - strlen(etat) - 12, " "); // Etat
+        printf("╚%.*s╝\n", largeur, "====================================="); // ligne du dessous (boîte)
+        printf("\n"); // Saut de ligne entre chaque bloc
+    }
 }
 
