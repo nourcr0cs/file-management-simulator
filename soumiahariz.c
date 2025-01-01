@@ -127,7 +127,7 @@ void InitMs( FILE* disque) {
       fread(&buffer, sizeof(Bloc), 1, disque);
 
     buffer.content.allocation.ms.nbrbloc = 20;
-    buffer.content.allocation.ms.FB = 20; // Nombre maximum d'enregistrements dans un bloc c'est le facteur du blocage
+    buffer.content.allocation.ms.FB = 30; // Nombre maximum d'enregistrements dans un bloc c'est le facteur du blocage
     buffer.content.allocation.ms.nbrblocutil = 1;
     CreeTableAllocation( disque);
     // Write the initial allocation table to the first block
