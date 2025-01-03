@@ -2,369 +2,488 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <math.h>
+typedef struct 
+{
+  char Nomdufichier[20];
+  int Taillefichierblocs;
+  int Taillefichierenregistrements;
+  int Adrpremierbloc;  //adresse  du 1 bloc 
+  int Modeorganisationglobale; // si est =0 alors chaine
+  int Modeorganisationinterne;  // si est=0 alors ordone
+}fichiermetadonnes;
 
-#define FB 10  // Nombre maximum d'enregistrements dans un bloc (facteur de bloc)
 
 typedef struct 
 {
-  char Nomdufichier[20];  // Nom du fichier
-  int Taillefichierblocs;  // Nombre de blocs du fichier
-  int Taillefichierenregistrements;  // Nombre d'enregistrements dans le fichier
-  int Adrpremierbloc;  // Adresse du premier bloc
-  int Modeorganisationglobale;  // Mode d'organisation global (0 : chaîne, 1 : autre)
-  int Modeorganisationinterne;  // Mode d'organisation interne (0 : ordonné, 1 : autre)
-} fichiermetadonnes;
+  int id;               
+  char name[15];  
+  int age;
+  char sexe[10];
+  char adresse[30];
+  int nmbrdevisite;
+  int suprimelogiqument;// 1 si est suprimé logiquement
 
-typedef struct 
-{
-  int id;  // Identifiant unique pour chaque enregistrement
-  char name[15];  // Nom du patient
-  int age;  // Âge du patient
-  char sexe[10];  // Sexe du patient
-  char adresse[30];  // Adresse du patient
-  int nmbrdevisite;  // Nombre de visites du patient
-  int suprimelogiqument;  // 1 si l'enregistrement est supprimé logiquement, sinon 0
-} maladie;
-
-typedef struct 
-{
-  maladie T[FB];  // Tableau contenant les enregistrements d'un bloc
-  int nbrmaladie;  // Nombre d'enregistrements dans ce bloc
-  int next;  // Adresse du bloc suivant (pour la chaîne)
-} Bloc;
-
-typedef struct
-{
-  int adrdebloc;  // Adresse du bloc
-  int etat;  // État du bloc (0 : vide, 1 : plein)
+}maladie;
+typedef struct {
+    int adrdebloc; // adresse de bloc
+    int etat;      // si vide = 0 pleine = 1
 } Tableallocation;
 
+typedef struct {
+    Tableallocation tablelocation[20];
+} BlocAllocation;
+
+typedef struct {
+    fichiermetadonnes T[20]; // Tableau de métadonnées
+    int nbrMetadonnees;       // Nombre actuel de métadonnées dans ce bloc
+    int next;
+} BlocMetadonnees;
 typedef struct 
 {
-  int nbrblocutil;  // Nombre de blocs utilisés
-  int nbrbloc;  // Nombre total de blocs disponibles
-  Tableallocation tablelocation[30];  // Tableau de table d'allocation pour chaque bloc
+    maladie T[20];
+    int nbrmaladie;
+    int next;
+   
+}BlocData;
+typedef struct {
+    int nbrblocutil; // nombre de bloc utilise
+    int nbrbloc;
+    int FB;
 } MS;
 
-// Fonction pour créer la table d'allocation
-Tableallocation CreerTableAllocation(MS *ms)
-{
-    Tableallocation TA;  // Déclare une table d'allocation
-    int i;
-    for ( i = 0; i < ms->nbrbloc; i++)  // Parcours de chaque bloc
-    {
-        TA.adrdebloc = i;  // L'adresse du bloc est l'index du tableau
-        TA.etat = 0;  // Initialement, tous les blocs sont vides
+typedef struct {
+    union {
+        BlocMetadonnees metadataTable;
+        BlocData fileData;
+        BlocAllocation allocation;
+    } content;
+    int typedebloc; // 1 = metadata, 2 = file data, 3 = allocation
+} Bloc;
+
+void metajourtableallocation(FILE* disque, int blocIndex, int etat) {
+    Bloc buffer;
+    fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
+    fread(&buffer, sizeof(Bloc), 1, disque);
+
+    if (buffer.typedebloc != 3) {
+        printf("Erreur : Le premier bloc n'est pas un bloc d'allocation.\n");
+        return;
     }
-    return TA;  // Retourne la table d'allocation initialisée
+
+    // Update the allocation table entry for the specified blocIndex
+    buffer.content.allocation.tablelocation[blocIndex].etat = etat;
+
+    // Write the updated allocation table back to the first block
+    fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
+    fwrite(&buffer, sizeof(Bloc), 1, disque);
 }
 
-// Fonction d'initialisation de la mémoire de stockage (MS)
-void InitialiserMS(MS *ms)
-{
-    ms->nbrbloc = 20;  // Initialisation du nombre de blocs à 20
-    ms->nbrblocutil = 0;  // Aucun bloc utilisé au départ
-    ms->tablelocation[0] = CreerTableAllocation(ms);  // Initialise la première table d'allocation
-    printf("MS Initialisée avec %d blocs.\n", ms->nbrbloc);  // Affiche un message de confirmation
+void CreeTableAllocation(MS *ms, FILE* disque) {
+    Bloc buffer;
+    buffer.typedebloc = 3; // Set the block type to 3 for table allocation
+    int i;
+    for ( i = 0; i < ms->nbrbloc; i++) {
+        buffer.content.allocation.tablelocation[i].adrdebloc = i;
+        buffer.content.allocation.tablelocation[i].etat = 0;
+    }
+
+    // Write the initial allocation table to the first block
+    fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
+    fwrite(&buffer, sizeof(Bloc), 1, disque);
+
+    // Mark the first block as allocated
+    metajourtableallocation(disque, 0, 1);
 }
 
-// Fonction pour créer un fichier avec les paramètres donnés par l'utilisateur
-void CreerFichier(fichiermetadonnes *file)
-{
+void ViderMs(FILE* disque, MS *ms) {
+    ms->nbrblocutil = 1; // nombre de bloc utilise
+    CreeTableAllocation(ms, disque); // revenir à la 1er état 
+}
+
+void InitMs(MS *ms, FILE* disque) {
+    ms->nbrbloc = 20;
+    ms->FB = 20; // Nombre maximum d'enregistrements dans un bloc c'est le facteur du blocage
+    ms->nbrblocutil = 1;
+    CreeTableAllocation(ms, disque);
+}
+
+
+//cree fichier...................................................................
+
+void creerFichier(FILE *disque) {
+    fichiermetadonnes fichier;
     printf("Entrez le nom du fichier : ");
-    scanf("%s", file->Nomdufichier);  // Demande le nom du fichier à l'utilisateur
+    scanf("%s", fichier.Nomdufichier);
+    
+    printf("Entrez la taille en blocs du fichier : ");
+    scanf("%d", &fichier.Taillefichierblocs);
+    
+    printf("Entrez le nombre d'enregistrements dans le fichier : ");
+    scanf("%d", &fichier.Taillefichierenregistrements);
 
-    printf("Entrez le nombre d'enregistrements : ");
-    scanf("%d", &file->Taillefichierenregistrements);  // Demande le nombre d'enregistrements
+    printf("Entrez le mode d'organisation globale (1 pour globale, 0 pour chaîne) : ");
+    scanf("%d", &fichier.Modeorganisationglobale);
+    
+    printf("Entrez le mode d'organisation interne (1 pour ordonnée, 0 pour non ordonnée) : ");
+    scanf("%d", &fichier.Modeorganisationinterne);
 
-    printf("Entrez le nombre de blocs : ");
-    scanf("%d", &file->Taillefichierblocs);  // Demande le nombre de blocs
-
-    printf("Entrez le mode d'organisation globale (0 : chaîne, 1 : autre) : ");
-    scanf("%d", &file->Modeorganisationglobale);  // Demande le mode d'organisation globale
-
-    printf("Entrez le mode d'organisation interne (0 : ordonné, 1 : autre) : ");
-    scanf("%d", &file->Modeorganisationinterne);  // Demande le mode d'organisation interne
-
-    file->Adrpremierbloc = 0;  // L'adresse du premier bloc est 0 par défaut
-    printf("Fichier '%s' créé avec %d enregistrements et %d blocs.\n", 
-            file->Nomdufichier, file->Taillefichierenregistrements, file->Taillefichierblocs);  // Affiche les informations du fichier
+    // Écrire les métadonnées dans le fichier
+    fseek(disque, 0, SEEK_END);
+    fwrite(&fichier, sizeof(fichiermetadonnes), 1, disque);
+    printf("Fichier créé avec succès.\n");
 }
 
-// Fonction pour insérer un enregistrement dans le fichier
-void InsererEnregistrement(MS *ms, fichiermetadonnes *file, maladie nouvelEnregistrement) {
-    int blocTrouve = 0;
-    Bloc *bloc = malloc(sizeof(Bloc));
-    int i, j;
 
-    // Cas 1: Organisation en blocs contigus et ordonnés par ID
-    if (file->Modeorganisationglobale == 0) {
-        for (i = 0; i < ms->nbrbloc; i++) {
-            if (ms->tablelocation[i].etat == 1) {  // Si le bloc est plein
-                for (j = 0; j < FB; j++) {
-                    if (bloc->T[j].id == 0 || bloc->T[j].id > nouvelEnregistrement.id) {
-                        // Décale les enregistrements pour faire de la place à l'insertion
-                        int k;
-                        for ( k = bloc->nbrmaladie - 1; k >= j; k--) {
-                            bloc->T[k + 1] = bloc->T[k];
-                        }
-                        bloc->T[j] = nouvelEnregistrement;  // Insère l'enregistrement à la bonne position
-                        bloc->nbrmaladie++;  // Incrémente le nombre d'enregistrements dans ce bloc
-                        blocTrouve = 1;
-                        break;
-                    }
-                }
-            }
-        }
+//charge fichie
 
-        if (!blocTrouve) {
-            // Si aucun bloc plein n'a été trouvé, essayer d'ajouter dans un bloc vide
-            for (i = 0; i < ms->nbrbloc; i++) {
-                if (ms->tablelocation[i].etat == 0) {  // Si le bloc est vide
-                    bloc->T[bloc->nbrmaladie] = nouvelEnregistrement;
-                    bloc->nbrmaladie++;
-                    ms->tablelocation[i].etat = 1;  // Marque le bloc comme plein
-                    ms->nbrblocutil++;  // Incrémente le nombre de blocs utilisés
-                    blocTrouve = 1;
-                    break;
-                }
-            }
-        }
 
-        if (!blocTrouve) {
-            // Si aucun bloc n'est disponible, demander à l'utilisateur s'il veut ajouter un nouveau bloc
-            printf("Tous les blocs sont pleins. Voulez-vous ajouter un nouveau bloc ? (1 : Oui, 0 : Non): ");
-            int choix;
-            scanf("%d", &choix);
-            if (choix == 1) {
-                ms->nbrbloc++;  // Augmente le nombre total de blocs
-                ms->tablelocation[ms->nbrbloc - 1].etat = 1;  // Marque le nouveau bloc comme plein
-                bloc->T[bloc->nbrmaladie] = nouvelEnregistrement;  // Ajoute l'enregistrement dans ce nouveau bloc
-                bloc->nbrmaladie++;
-                ms->nbrblocutil++;
-                printf("Enregistrement ajouté dans un nouveau bloc.\n");
-            } else {
-                printf("Aucun bloc libre disponible pour l'insertion.\n");
-            }
-        }
-    }
-}
-
-// Fonction pour rechercher un enregistrement par son ID
-void RechercherEnregistrement(MS *ms, fichiermetadonnes *file, int idRecherche)
-{
-    // Recherche dans tous les blocs pour l'enregistrement avec l'ID donné
+void chargerFichier(FILE *disque, MS *ms) {
+    // Allouer les blocs nécessaires à partir de la table d'allocation
+    fseek(disque, 0, SEEK_SET);
+    Bloc buffer;
+    
+    // Lire les métadonnées
+    fread(&buffer, sizeof(Bloc), 1, disque);
+    
+    // Initialiser les blocs et marquer les blocs comme alloués
     int i;
-    for ( i = 0; i < ms->nbrbloc; i++)
-    {
-        if (ms->tablelocation[i].etat == 1)  // Si le bloc n'est pas vide
-        {
-        	int j;
-            for ( j = 0; j < FB; j++)
-            {
-                if (ms->tablelocation[i].adrdebloc == idRecherche)  // Si l'ID correspond
-                {
-                    printf("Enregistrement trouvé dans le bloc %d.\n", i);  // Affiche l'emplacement du bloc
-                    return;  // Retourne dès que l'enregistrement est trouvé
-                }
-            }
-        }
-    }
-    printf("Enregistrement non trouvé.\n");  // Si l'enregistrement n'est pas trouvé
-}
-
-// Fonction pour supprimer un enregistrement logiquement (marquer comme supprimé)
-void SupprimerLogiquement(MS *ms, fichiermetadonnes *file, int id) {
-    int i, j;
-    int trouve = 0;
-
-    // Recherche de l'enregistrement à supprimer logiquement
-    for (i = 0; i < ms->nbrbloc; i++) {
-        Bloc *bloc = malloc(sizeof(Bloc));
-        for (j = 0; j < bloc->nbrmaladie; j++) {
-            if (bloc->T[j].id == id) {  // Si l'ID correspond à celui recherché
-                // Marquer l'enregistrement comme supprimé logiquement
-                bloc->T[j].suprimelogiqument = 1;  // L'enregistrement est supprimé logiquement
-                printf("Enregistrement avec ID %d supprimé logiquement.\n", id);
-                trouve = 1;
-                break;
-            }
-        }
-        if (trouve) {
+    for ( i = 0; i < ms->nbrbloc; i++) {
+        if (buffer.content.allocation.tablelocation[i].etat == 0) {
+            // Trouver un bloc vide et le marquer comme plein
+            buffer.content.allocation.tablelocation[i].etat = 1;
             break;
         }
     }
-
-    if (!trouve) {
-        printf("Enregistrement avec ID %d non trouvé.\n", id);
-    }
+    // Écrire les données mises à jour
+    fseek(disque, 0, SEEK_SET);
+    fwrite(&buffer, sizeof(Bloc), 1, disque);
 }
 
-// Fonction pour supprimer un enregistrement physiquement
-void SupprimerPhysiquement(MS *ms, fichiermetadonnes *file, int id) {
-    int i, j, k;
-    int trouve = 0;
 
-    // Recherche de l'enregistrement à supprimer
-    for (i = 0; i < ms->nbrbloc; i++) {
-        Bloc *bloc = malloc(sizeof(Bloc));
-        for (j = 0; j < bloc->nbrmaladie; j++) {
-            if (bloc->T[j].id == id) {  // Si l'ID correspond à celui recherché
-                // Déplacer les enregistrements suivants pour combler l'espace
-                for (k = j; k < bloc->nbrmaladie - 1; k++) {
-                    bloc->T[k] = bloc->T[k + 1];  // Décaler les enregistrements vers la gauche
-                }
-                bloc->nbrmaladie--;  // Réduire le nombre d'enregistrements dans le bloc
-                printf("Enregistrement avec ID %d supprimé physiquement.\n", id);
-                ms->tablelocation[i].etat = 0;  // Marquer le bloc comme vide
-                trouve = 1;
-                break;
-            }
-        }
-        if (trouve) {
+
+
+//insertion ...................................................................
+
+
+void insererEnregistrement(FILE *disque, maladie enregistrement, MS *ms) {
+    fseek(disque, 0, SEEK_SET);
+    Bloc buffer;
+    fread(&buffer, sizeof(Bloc), 1, disque);
+    
+    // Chercher un bloc disponible
+    int i;
+    for ( i = 0; i < ms->nbrbloc; i++) {
+        if (buffer.content.allocation.tablelocation[i].etat == 0) {
+            // Insérer l'enregistrement dans le bloc disponible
+            buffer.content.fileData.T[i] = enregistrement;
+            buffer.content.fileData.nbrmaladie++;
+            buffer.content.allocation.tablelocation[i].etat = 1; // Marquer le bloc comme plein
             break;
         }
     }
-
-    if (!trouve) {
-        printf("Enregistrement avec ID %d non trouvé.\n", id);
-    }
+    
+    // Mettre à jour le disque
+    fseek(disque, 0, SEEK_SET);
+    fwrite(&buffer, sizeof(Bloc), 1, disque);
+    printf("Enregistrement inséré avec succès.\n");
 }
-// Fonction pour effectuer la défragmentation (réorganiser les blocs)
-void Defragmenter(MS *ms, fichiermetadonnes *file) {
-    int i, j, k;
-    int blocLibere = 0;
 
-    // Recherche des enregistrements supprimés logiquement
-    for (i = 0; i < ms->nbrbloc; i++) {
-        Bloc *bloc = malloc(sizeof(Bloc));
-        for (j = 0; j < bloc->nbrmaladie; j++) {
-            if (bloc->T[j].suprimelogiqument == 1) {  // Si l'enregistrement est supprimé logiquement
-                // Trouver un enregistrement à déplacer
-                for (k = j + 1; k < bloc->nbrmaladie; k++) {
-                    bloc->T[k - 1] = bloc->T[k];  // Déplacer l'enregistrement vers la gauche
-                }
-                bloc->nbrmaladie--;  // Réduire le nombre d'enregistrements dans le bloc
-                ms->tablelocation[i].etat = 0;  // Marquer le bloc comme vide
-                blocLibere = 1;  // Signaler qu'un bloc a été libéré
-            }
+
+
+//recherche 
+
+void rechercheParID(FILE *disque, int idRecherche, MS *ms) {
+    fseek(disque, 0, SEEK_SET);
+    Bloc buffer;
+    fread(&buffer, sizeof(Bloc), 1, disque);
+    
+    // Recherche binaire dans un bloc ordonné
+    int gauche = 0, droite = ms->FB - 1;
+    while (gauche <= droite) {
+        int milieu = (gauche + droite) / 2;
+        if (buffer.content.fileData.T[milieu].id == idRecherche) {
+            printf("Enregistrement trouvé dans le bloc %d, à la position %d.\n", buffer.content.fileData.T[milieu].id, milieu);
+            return;
+        }
+        if (buffer.content.fileData.T[milieu].id < idRecherche) {
+            gauche = milieu + 1;
+        } else {
+            droite = milieu - 1;
+        }
+    }
+    
+    printf("Enregistrement avec ID %d non trouvé.\n", idRecherche);
+}
+
+
+
+// supprecion logique 
+
+void suppressionLogique(FILE *disque, int id, MS *ms) {
+    fseek(disque, 0, SEEK_SET);
+    Bloc buffer;
+    fread(&buffer, sizeof(Bloc), 1, disque);
+    
+    // Chercher l'enregistrement par ID
+    int i;
+    for ( i = 0; i < ms->FB; i++) {
+        if (buffer.content.fileData.T[i].id == id) {
+            // Marquer l'enregistrement comme supprimé logiquement
+            buffer.content.fileData.T[i].suprimelogiqument = 1;
+            printf("Enregistrement avec ID %d supprimé logiquement.\n", id);
+            break;
+        }
+    }
+    
+    // Mettre à jour le disque
+    fseek(disque, 0, SEEK_SET);
+    fwrite(&buffer, sizeof(Bloc), 1, disque);
+}
+
+
+
+//suppresion phisique
+
+void suppressionPhysique(FILE *disque, int id, MS *ms) {
+    fseek(disque, 0, SEEK_SET);
+    Bloc buffer;
+    fread(&buffer, sizeof(Bloc), 1, disque);
+    
+    // Chercher l'enregistrement par ID
+    int i;
+    for ( i = 0; i < ms->FB; i++) {
+        if (buffer.content.fileData.T[i].id == id) {
+            // Réorganiser physiquement les blocs en déplaçant l'enregistrement à la fin
+            buffer.content.fileData.T[i] = buffer.content.fileData.T[ms->FB - 1];
+            buffer.content.fileData.nbrmaladie--;  // Réduire le nombre d'enregistrements
+            printf("Enregistrement avec ID %d supprimé physiquement.\n", id);
+            break;
+        }
+    }
+    
+    // Mettre à jour le disque
+    fseek(disque, 0, SEEK_SET);
+    fwrite(&buffer, sizeof(Bloc), 1, disque);
+}
+
+
+// defragmantation 
+
+
+void defragmentation(FILE *disque, MS *ms) {
+    fseek(disque, 0, SEEK_SET);
+    Bloc buffer;
+    fread(&buffer, sizeof(Bloc), 1, disque);
+
+    int index = 0;
+    int i;
+    for ( i = 0; i < ms->nbrbloc; i++) {
+        if (buffer.content.fileData.T[i].suprimelogiqument == 0) {
+            buffer.content.fileData.T[index] = buffer.content.fileData.T[i];
+            index++;
         }
     }
 
-    // Re-organisation des enregistrements pour combler l'espace libre
-    if (blocLibere) {
-        for (i = 0; i < ms->nbrbloc; i++) {
-            Bloc *bloc = malloc(sizeof(Bloc));
-            if (ms->tablelocation[i].etat == 0) {  // Si le bloc est vide
-                for (j = i + 1; j < ms->nbrbloc; j++) {
-                    if (ms->tablelocation[j].etat == 1) {  // Si un bloc plein suit
-                        for (k = 0; k < bloc->nbrmaladie; k++) {
-                            bloc->T[k] = bloc->T[k + 1];  // Déplacer les enregistrements pour remplir le bloc
-                        }
-                        bloc->nbrmaladie--;
-                        ms->tablelocation[i].etat = 1;  // Marquer le bloc comme plein
-                    }
-                }
-            }
-        }
-    }
-
+    // Mettre à jour les blocs après la défragmentation
+    fseek(disque, 0, SEEK_SET);
+    fwrite(&buffer, sizeof(Bloc), 1, disque);
     printf("Défragmentation terminée.\n");
 }
+   
+   
+   //compactage 
+   
+   
+   void compactage(FILE *disque, MS *ms) {
+    // Parcours des blocs utilisés pour récupérer l'espace inutilisé
+    int i;
+    for ( i = 0; i < ms->nbrblocutil; i++) {
+        // Lecture du bloc de données
+        fseek(disque, i * sizeof(Bloc), SEEK_SET);
+        Bloc buffer;
+        fread(&buffer, sizeof(Bloc), 1, disque);
 
+        // Vérifier si c'est un bloc de données
+        if (buffer.typedebloc == 2) {
+            int shiftIndex = 0;  // Indice pour déplacer les enregistrements valides
 
-// Fonction pour renommer un fichier
-void RenommerFichier(fichiermetadonnes *file, char *nouveauNom)
-{
-    strcpy(file->Nomdufichier, nouveauNom);  // Copie le nouveau nom dans la structure du fichier
-    printf("Fichier renommé en %s.\n", file->Nomdufichier);  // Affiche un message de confirmation
+            // Parcours des enregistrements dans le bloc
+            int j;
+            for ( j = 0; j < ms->FB; j++) {
+                // Vérifier si l'enregistrement est marqué pour suppression logique
+                if (buffer.content.fileData.T[j].suprimelogiqument == 0) {
+                    // Déplacer l'enregistrement valide
+                    if (j != shiftIndex) {
+                        buffer.content.fileData.T[shiftIndex] = buffer.content.fileData.T[j];
+                        buffer.content.fileData.T[j] = (maladie){0}; // Réinitialiser l'ancien emplacement
+                    }
+                    shiftIndex++;  // Augmenter l'indice de l'enregistrement valide
+                }
+            }
+
+            // Mettre à jour le nombre d'enregistrements valides
+            buffer.content.fileData.nbrmaladie = shiftIndex;
+
+            // Réécrire le bloc modifié dans le disque
+            fseek(disque, i * sizeof(Bloc), SEEK_SET);
+            fwrite(&buffer, sizeof(Bloc), 1, disque);
+        }
+    }
+
+    printf("Compactage terminé. L'espace inutilisé a été récupéré.\n");
 }
 
 
-   
-int main() {
-    MS ms;
-    fichiermetadonnes file;
-    maladie nouvelEnregistrement;
-    int choix, idRecherche;
 
-    // Initialisation de la mémoire de stockage
-    InitialiserMS(&ms);
+//  rennomet fichie
+
+void renommerFichier(FILE *disque, const char *ancienNom, const char *nouveauNom) {
+    fseek(disque, 0, SEEK_SET);
+    Bloc buffer;
+    fread(&buffer, sizeof(Bloc), 1, disque);
+
+    // Chercher le fichier et le renommer
+    int i;
+    for ( i = 0; i < 20; i++) {
+        if (strcmp(buffer.content.metadataTable.T[i].Nomdufichier, ancienNom) == 0) {
+            strcpy(buffer.content.metadataTable.T[i].Nomdufichier, nouveauNom);
+            break;
+        }
+    }
+
+    // Mettre à jour le disque
+    fseek(disque, 0, SEEK_SET);
+    fwrite(&buffer, sizeof(Bloc), 1, disque);
+    printf("Fichier renommé en %s.\n", nouveauNom);
+}
+
+
+// supprimet fichie 
+
+void supprimerFichier(FILE *disque, const char *nomFichier) {
+    fseek(disque, 0, SEEK_SET);
+    Bloc buffer;
+    fread(&buffer, sizeof(Bloc), 1, disque);
+
+    // Chercher et supprimer le fichier
+    int i;
+    for ( i = 0; i < 20; i++) {
+        if (strcmp(buffer.content.metadataTable.T[i].Nomdufichier, nomFichier) == 0) {
+            buffer.content.metadataTable.T[i].Nomdufichier[0] = '\0'; // Marquer comme supprimé
+            break;
+        }
+    }
+
+    // Mettre à jour le disque
+    fseek(disque, 0, SEEK_SET);
+    fwrite(&buffer, sizeof(Bloc), 1, disque);
+    printf("Fichier %s supprimé.\n", nomFichier);
+}
+
+
+
+//test les fonction 
+
+
+
+int main() {
+    FILE *disque = fopen("disque.bin", "rb+");  // Fichier disque où les données seront stockées
+    if (!disque) {
+        printf("Erreur d'ouverture du fichier disque.\n");
+        return 1;
+    }
+
+    int id;
+    const char *ancienNom;
+    const char *nouveauNom;
+    const char *nomFichier;
+
+    maladie enregistrement;  // Déclarez un enregistrement pour l'insertion
+    int idRecherche;  // Déclarez une variable pour l'ID de recherche
+
+    MS ms;  // Structure pour la gestion de la mémoire secondaire
+    InitMs(&ms, disque);  // Initialisation de la mémoire secondaire
+    int choix;
 
     do {
-        printf("\n=== MENU ===\n");
-        printf("1. Créer un fichier\n");
-        printf("2. Insérer un enregistrement\n");
-        printf("3. Rechercher un enregistrement\n");
-        printf("4. Supprimer un enregistrement logiquement\n");
-        printf("5. Supprimer un enregistrement physiquement\n");
-        printf("6. Défragmenter la mémoire\n");
-        printf("7. Renommer un fichier\n");
+        // Menu pour l'utilisateur
+        printf("\nMenu:\n");
+        printf("1. Creer un fichier\n");
+        printf("2. Charger un fichier\n");
+        printf("3. Inserer un enregistrement\n");
+        printf("4. Rechercher un enregistrement\n");
+        printf("5. Suppression logique d'un enregistrement\n");
+        printf("6. Suppression physique d'un enregistrement\n");
+        printf("7. Compactage\n");
+        printf("8. Renommer un fichier\n");
+        printf("9. Supprimer un fichier\n");
         printf("0. Quitter\n");
-        printf("Choisissez une option : ");
+        printf("Choisissez une option: ");
         scanf("%d", &choix);
 
         switch (choix) {
             case 1:
-                CreerFichier(&file);
+                creerFichier(disque);
                 break;
-
             case 2:
-                printf("Entrez les informations de l'enregistrement :\n");
-                printf("ID : ");
-                scanf("%d", &nouvelEnregistrement.id);
-                printf("Nom : ");
-                scanf("%s", nouvelEnregistrement.name);
-                printf("Âge : ");
-                scanf("%d", &nouvelEnregistrement.age);
-                printf("Sexe : ");
-                scanf("%s", nouvelEnregistrement.sexe);
-                printf("Adresse : ");
-                scanf("%s", nouvelEnregistrement.adresse);
-                printf("Nombre de visites : ");
-                scanf("%d", &nouvelEnregistrement.nmbrdevisite);
-                nouvelEnregistrement.suprimelogiqument = 0; // Non supprimé logiquement
-                InsererEnregistrement(&ms, &file, nouvelEnregistrement);
+                chargerFichier(disque, &ms);
                 break;
-
             case 3:
-                printf("Entrez l'ID de l'enregistrement à rechercher : ");
-                scanf("%d", &idRecherche);
-                RechercherEnregistrement(&ms, &file, idRecherche);
+                printf("Entrez les détails de l'enregistrement :\n");
+                printf("ID: ");
+                scanf("%d", &enregistrement.id);
+                printf("Nom: ");
+                scanf("%s", enregistrement.name);  // Utilisez %s pour lire une chaîne
+                printf("Âge: ");
+                scanf("%d", &enregistrement.age);
+                printf("Sexe: ");
+                scanf("%s", enregistrement.sexe);  // Sexe
+                printf("Adresse: ");
+                scanf("%s", enregistrement.adresse);  // Adresse
+                printf("Nombre de visites: ");
+                scanf("%d", &enregistrement.nmbrdevisite);  // Nombre de visites
+                enregistrement.suprimelogiqument = 0;  // Par défaut, pas supprimé logiquement
+                insererEnregistrement(disque, enregistrement, &ms);
                 break;
-
             case 4:
-                printf("Entrez l'ID de l'enregistrement à supprimer logiquement : ");
+                printf("Entrez l'ID à rechercher : ");
                 scanf("%d", &idRecherche);
-                SupprimerLogiquement(&ms, &file, idRecherche);
+                rechercheParID(disque, idRecherche, &ms);
                 break;
-
             case 5:
-                printf("Entrez l'ID de l'enregistrement à supprimer physiquement : ");
-                scanf("%d", &idRecherche);
-                SupprimerPhysiquement(&ms, &file, idRecherche);
+                printf("Entrez l'ID à supprimer logiquement : ");
+                scanf("%d", &id);
+                suppressionLogique(disque, id, &ms);
                 break;
-
             case 6:
-                Defragmenter(&ms, &file);
+                printf("Entrez l'ID à supprimer physiquement : ");
+                scanf("%d", &id);
+                suppressionPhysique(disque, id, &ms);
                 break;
-
-            case 7: {
-                char nouveauNom[20];
-                printf("Entrez le nouveau nom du fichier : ");
-                scanf("%s", nouveauNom);
-                RenommerFichier(&file, nouveauNom);
+            case 7:
+                compactage(disque, &ms);
                 break;
-            }
-
+            case 8:
+                printf("Entrez l'ancien nom de fichier : ");
+                scanf("%s", (char *)ancienNom);
+                printf("Entrez le nouveau nom de fichier : ");
+                scanf("%s", (char *)nouveauNom);
+                renommerFichier(disque, ancienNom, nouveauNom);
+                break;
+            case 9:
+                printf("Entrez le nom du fichier à supprimer : ");
+                scanf("%s", (char *)nomFichier);
+                supprimerFichier(disque, nomFichier);
+                break;
             case 0:
-                printf("Au revoir !\n");
+                printf("Au revoir!\n");
                 break;
-
             default:
-                printf("Option invalide. Veuillez réessayer.\n");
+                printf("Option invalide, veuillez réessayer.\n");
         }
     } while (choix != 0);
 
+    fclose(disque);  // Fermer le fichier
     return 0;
 }

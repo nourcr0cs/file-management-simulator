@@ -232,7 +232,7 @@ void creationL_OF(FILE *disque, MS *ms, int nbrbloc) {
 ////////////////////////////----f----///////////////////////
 adressemetadonnees recherchemetadonnees(FILE*disque,const char* nomfichier){
     Bloc buffer;
-    adressemetadonnees resultat = {-1, -1};  // Initialisation a -1 pour indiquer non trouvé
+    adressemetadonnees resultat = {-1, -1};  
     rewind(disque);
     
     for(int i = 1;i <= 2; i++) {
@@ -299,8 +299,8 @@ int liremetadonnees(FILE*disque, const char* nomFichier, int caracteristique) {
 
       rewind(disque);
 
-        fseek(disque,adresse.numerodebloc*sizeof(Bloc),SEEK_SET);
-        fread(&buffer,sizeof(Bloc),1,disque);
+        fseek(disque, adresse.numerodebloc*sizeof(Bloc), SEEK_SET);
+        fread(&buffer, sizeof(Bloc), 1, disque);
 
     for (int i =0; i < FB ; i++) {
         if ( adresse.index == i) {
@@ -428,7 +428,7 @@ bool ajoutermetadonnees(FILE* disque, fichiermetadonnees metadonnes, int taille)
 
         MAJtaballocation(ms, place, 1);
 
-        // Faire le chaînage
+        //Faire le chaînage
         fseek(disque, prevBloc * sizeof(Bloc), SEEK_SET);
         fread(&buffer, sizeof(Bloc), 1, disque);
         buffer.content.metadataTable.next = place;
@@ -566,7 +566,7 @@ void insertDis(FILE *disque, MS *ms, int nbrbloc, const char* nomFichier) {
     lock = liremetadonnees(disque, nomFichier, 3);
     
     
-    //to get the adr of the last bloc then we start foll the .next of this bloc to the new bloc 
+    //to get the adr of the first bloc then we start flw the .next of this bloc to the new bloc 
     for (i = lock; i < nbrbloc; i++) {
             fseek(disque,i * sizeof(Bloc), SEEK_SET);
             fread(&prevBuffer,sizeof(Bloc), 1, disque);
@@ -709,7 +709,7 @@ void renameFile(FILE *disque, const char *nomFichier, const char *newName) {
 
     fseek(disque, adress.numerodebloc *sizeof(Bloc), SEEK_SET);
     fread(&buffer, sizeof(Bloc), 1, disque);
-    //once found we copy it 
+    //once found we introduce the new name to the matching file
     strcpy(buffer.content.metadataTable.T[adress.index].Nomdufichier, newName);
 
     fseek(disque, adress.numerodebloc *sizeof(Bloc), SEEK_SET);
