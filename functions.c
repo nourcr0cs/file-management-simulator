@@ -14,12 +14,10 @@ buff.content.mettaTable.T[add.index].Nomdufichier = namenewfile ;//cmodifier le 
 }
 
 
-
-
 //compactage de la ms
 
-compactMS(MS* ms   ){
-rewine( ms );
+compactMS(MS* ms){
+rewind( ms );
 bloc buff1,buff2;
 int i ,j;//i parcours la tablallocation  et j on l utilse en cas de deblacement
  fread(buff1, ms.nbrbloc* sizeof(Tableallocation),1,ms);
@@ -39,4 +37,3 @@ int i ,j;//i parcours la tablallocation  et j on l utilse en cas de deblacement
      i++;
     }
  }
-}
