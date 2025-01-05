@@ -117,6 +117,49 @@ void compactMS(BlocAllocation *blocAlloc) {
 }
 
 
+
+// Fonction qui vérifie s'il y a de l'espace contigu dans la mémoire centrale
+void gestionEspace(Bloc *bloc, int nbrBlocsRequis) {
+    int espaceTrouve = 0;
+    int debutEspace = -1;
+    
+    // Vérifie si la table d'allocation est accessible
+    if (bloc->typedebloc != 3) {
+        printf("Type de bloc invalide pour l'allocation.\n");
+        return;
+    }
+
+    // Recherche de l'espace contigu disponible dans la table d'allocation
+    for (int i = 0; i < bloc->content.allocation.ms.nbrbloc - nbrBlocsRequis + 1; i++) {
+        int espaceLibre = 0;
+
+        // Vérifie si les `nbrBlocsRequis` blocs sont vides et contigus
+        for (int j = i; j < i + nbrBlocsRequis; j++) {
+            if (bloc->content.allocation.tablelocation[j].etat == 0) {
+                espaceLibre++;
+            } else {
+                break;  // Si un bloc est plein, on arrête la vérification
+            }
+        }
+
+        // Si on trouve suffisamment de blocs vides et contigus
+        if (espaceLibre == nbrBlocsRequis) {
+            debutEspace = i;
+            espaceTrouve = 1;
+            break;
+        }
+    }
+
+    if (espaceTrouve) {
+        // Afficher l'espace trouvé
+        printf("Espace trouvé : %d blocs contigus à partir de l'adresse %d\n", nbrBlocsRequis, bloc->content.allocation.tablelocation[debutEspace].adrdebloc);
+    } else {
+        // Si l'espace n'est pas contigu, appelle la fonction de compactage
+        printf("Aucun espace contigu trouvé. Appel de la fonction de compactage...\n");
+        compactage(&bloc->content.allocation);
+    }
+}
+
 // Déclaration de la fonction afficherEtatMemoire avant main
 void afficherEtatMemoire(BlocAllocation *blocAlloc);
 
