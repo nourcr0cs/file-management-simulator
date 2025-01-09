@@ -1,6 +1,5 @@
 #include <string.h>
 #include <stdio.h>
-
 typedef struct {
     char Nomdufichier[20];
     int Taillefichierblocs;
@@ -56,6 +55,110 @@ typedef struct {
     } content;
     int typedebloc; // 1 = metadata, 2 = file data, 3 = allocation
 } Bloc;
+// Définition de la fonction afficherEtatMemoire
+void afficherEtatMemoire(BlocAllocation *blocAlloc) {
+    printf("Etat de la mémoire secondaire (avec des boîtes):\n\n");
+
+    // Afficher les informations globales
+    printf("Nombre total de blocs: %d\n", blocAlloc->ms.nbrbloc);
+    printf("Nombre de blocs utilisés: %d\n", blocAlloc->ms.nbrblocutil);
+    printf("FB (autre info): %d\n\n", blocAlloc->ms.FB);
+
+    // Affichage des blocs avec des boîtes autour de chaque bloc
+    for (int i = 0; i < 20; i++) {
+        const char* etat = (blocAlloc->tablelocation[i].etat == 0) ? "Vide" : "Plein";
+        
+        int largeur = 20 + 2 + 2 * strlen(etat); // pour l'adresse + état, ajustable selon la taille du texte
+        printf("Bloc %d:\n", i + 1);
+        printf("╔%.*s╗\n", largeur, "====================================="); // ligne du dessus (boîte)
+        printf("║ Adresse: %d %*s║\n", blocAlloc->tablelocation[i].adrdebloc, largeur - 15, " "); // Adresse
+        printf("║ Etat   : %s %*s║\n", etat, largeur - strlen(etat) - 12, " "); // Etat
+        printf("╚%.*s╝\n", largeur, "====================================="); // ligne du dessous (boîte)
+        printf("\n"); // Saut de ligne entre chaque bloc
+    }
+}
+
+
+
+
+// Fonction de compactage de la mémoire secondaire
+void compactMS(BlocAllocation *blocAlloc) {
+    if (blocAlloc == NULL) {
+        printf("Erreur: Bloc d'allocation NULL.\n");
+        return;
+    }
+
+    // Initialisation de l'indice de bloc vide (nextFreeBlock)
+    int nextFreeBlock = 0;  // Indice du prochain bloc vide
+    for (int i = 0; i < 20; i++) {
+        // Si le bloc est vide, déplacer à la fin des blocs vides
+        if (blocAlloc->tablelocation[i].etat == 0) {
+            // Ignorer les blocs vides et passer au suivant
+            continue;
+        }
+
+        // Si le bloc est plein, déplacer vers la position du prochain bloc vide
+        if (i != nextFreeBlock) {
+            // Déplacer le bloc plein à l'emplacement du bloc vide
+            blocAlloc->tablelocation[nextFreeBlock] = blocAlloc->tablelocation[i];
+            blocAlloc->tablelocation[i].etat = 0;  // Marquer le bloc original comme vide
+        }
+
+        // Mettre à jour l'indice pour le prochain bloc vide
+        nextFreeBlock++;
+    }
+
+    // Mettre à jour le nombre de blocs utilisés
+    blocAlloc->ms.nbrblocutil = nextFreeBlock;
+    printf("Compactage terminé. %d blocs utilisés après compactage.\n", blocAlloc->ms.nbrblocutil);
+
+    // Afficher l'état de la mémoire après le compactage
+    afficherEtatMemoire(blocAlloc);
+}
+
+
+
+// Fonction qui vérifie s'il y a de l'espace contigu dans la mémoire centrale
+void gestionEspace(Bloc *bloc, int nbrBlocsRequis) {
+    int espaceTrouve = 0;
+    int debutEspace = -1;
+    
+    // Vérifie si la table d'allocation est accessible
+    if (bloc->typedebloc != 3) {
+        printf("Type de bloc invalide pour l'allocation.\n");
+        return;
+    }
+
+    // Recherche de l'espace contigu disponible dans la table d'allocation
+    for (int i = 0; i < bloc->content.allocation.ms.nbrbloc - nbrBlocsRequis + 1; i++) {
+        int espaceLibre = 0;
+
+        // Vérifie si les `nbrBlocsRequis` blocs sont vides et contigus
+        for (int j = i; j < i + nbrBlocsRequis; j++) {
+            if (bloc->content.allocation.tablelocation[j].etat == 0) {
+                espaceLibre++;
+            } else {
+                break;  // Si un bloc est plein, on arrête la vérification
+            }
+        }
+
+        // Si on trouve suffisamment de blocs vides et contigus
+        if (espaceLibre == nbrBlocsRequis) {
+            debutEspace = i;
+            espaceTrouve = 1;
+            break;
+        }
+    }
+
+    if (espaceTrouve) {
+        // Afficher l'espace trouvé
+        printf("Espace trouvé : %d blocs contigus à partir de l'adresse %d\n", nbrBlocsRequis, bloc->content.allocation.tablelocation[debutEspace].adrdebloc);
+    } else {
+        // Si l'espace n'est pas contigu, appelle la fonction de compactage
+        printf("Aucun espace contigu trouvé. Appel de la fonction de compactage...\n");
+        compactage(&bloc->content.allocation);
+    }
+}
 
 // Déclaration de la fonction afficherEtatMemoire avant main
 void afficherEtatMemoire(BlocAllocation *blocAlloc);
@@ -123,6 +226,12 @@ int main() {
                 break;
             case 11:
                 printf("Compactage de la mémoire secondaire\n");
+                // Affichage avant compactage
+                 printf("Avant compactage :\n");
+                 afficherEtatMemoire(/*latable dallocation*/);
+
+                  // Appeler la fonction de compactage
+                  compactMS(/*latableallocationn*/);
                 break;
             case 12:
                 printf("Mémoire secondaire vidée\n");
@@ -138,26 +247,4 @@ int main() {
     return 0;
 }
 
-// Définition de la fonction afficherEtatMemoire
-void afficherEtatMemoire(BlocAllocation *blocAlloc) {
-    printf("Etat de la mémoire secondaire (avec des boîtes):\n\n");
-
-    // Afficher les informations globales
-    printf("Nombre total de blocs: %d\n", blocAlloc->ms.nbrbloc);
-    printf("Nombre de blocs utilisés: %d\n", blocAlloc->ms.nbrblocutil);
-    printf("FB (autre info): %d\n\n", blocAlloc->ms.FB);
-
-    // Affichage des blocs avec des boîtes autour de chaque bloc
-    for (int i = 0; i < 20; i++) {
-        const char* etat = (blocAlloc->tablelocation[i].etat == 0) ? "Vide" : "Plein";
-        
-        int largeur = 20 + 2 + 2 * strlen(etat); // pour l'adresse + état, ajustable selon la taille du texte
-        printf("Bloc %d:\n", i + 1);
-        printf("╔%.*s╗\n", largeur, "====================================="); // ligne du dessus (boîte)
-        printf("║ Adresse: %d %*s║\n", blocAlloc->tablelocation[i].adrdebloc, largeur - 15, " "); // Adresse
-        printf("║ Etat   : %s %*s║\n", etat, largeur - strlen(etat) - 12, " "); // Etat
-        printf("╚%.*s╝\n", largeur, "====================================="); // ligne du dessous (boîte)
-        printf("\n"); // Saut de ligne entre chaque bloc
-    }
-}
 
