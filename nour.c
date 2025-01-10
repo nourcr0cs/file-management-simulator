@@ -327,7 +327,6 @@ void creationL_OF(FILE *disque, MS *ms, int nbrbloc) {
         printf("Espace insuffisant.\n");
         return;
     }
-
     //I asssumed the bloc with index 1 is for metadata 
     int metadataBlockIndex = 1;
     while (metadataBlockIndex != -1) {
@@ -343,14 +342,12 @@ void creationL_OF(FILE *disque, MS *ms, int nbrbloc) {
         }
         metadataBlockIndex = buffer.content.metadataTable.next;
     }
-
     //If no space in metadata, print error
     //but we may search later, if we have time for new blocks for metaData
     if (!metadataFound) {
         printf("No space available in metadata blocks.\n");
         return;
     }
-
     //skipping the pt two wla three (alloc + metadataTable), pour l'instant rni dyra 3 (whda alloc, zodj metadata)
     for ( i = 3; i < ms->nbrbloc; i++) {
         if (ms->tablelocation[i].etat == 0) {
@@ -358,19 +355,14 @@ void creationL_OF(FILE *disque, MS *ms, int nbrbloc) {
             break;
         }
     }
-
     if (ptDataBlock == -1) {
         printf("No available blocks in MS.\n");
         return ;
     }
-
-
     buffer.content.fileData.nbrmaladie = 0;
     buffer.content.fileData.next = -1;
     fseek(disque, ptDataBlock * sizeof(Bloc), SEEK_SET);
     fwrite(&buffer, sizeof(Bloc), 1, disque);
-
-
 
     //Update the metadataTable block with the new data block address (aussi capable fonc whdha )
     Bloc metadataTable;
@@ -382,13 +374,10 @@ void creationL_OF(FILE *disque, MS *ms, int nbrbloc) {
         metadataTable.content.metadataTable.T[j].Adrpremierbloc = ptDataBlock;
             break;
         }
-
-
     // Calculate blocks needed based on records and blocking factor
     int facteur_blocage = FB; // Using FB constant
     fichiermetadonnees metadonnees = buffer.content.metadataTable.T[i];
     metadonnees.Taillefichierblocs = ceil((double)metadonnees.Taillefichierenregistrements / facteur_blocage) + 1;
-
     // Write back updated metadata
     fseek(disque, sizeof(Bloc), SEEK_SET);
     fwrite(&buffer, sizeof(Bloc), 1, disque);
