@@ -1,5 +1,14 @@
 #include <string.h>
 #include <stdio.h>
+#include <disque.bin>
+#include <function.c>
+#include <hiba.c>
+#include <maroua.c>
+#include <nour.c>
+#include <nour.h>
+#include <soumia.c>
+#include <soumiahariz.exe>
+#include  <yousra.c>
 typedef struct {
     char Nomdufichier[20];
     int Taillefichierblocs;
@@ -160,15 +169,10 @@ void gestionEspace(Bloc *bloc, int nbrBlocsRequis) {
     }
 }
 
-// Déclaration de la fonction afficherEtatMemoire avant main
-void afficherEtatMemoire(BlocAllocation *blocAlloc);
+int main(){
 
-int main() {
-    int choix;
-    int modeG;
-    int modeI;
-    do {
-        printf("\n--- Gestion de la Mémoire Secondaire ---\n");
+
+ printf("\n--- Gestion de la Mémoire Secondaire ---\n");
         printf("1. Initialiser la mémoire secondaire\n");
         printf("2. Créer un fichier\n");
         printf("3. Afficher l'état de la mémoire secondaire\n");
@@ -181,14 +185,19 @@ int main() {
         printf("10. Renommer un fichier\n");
         printf("11. Compacter la mémoire secondaire\n");
         printf("12. Vider la mémoire secondaire\n");
+        printf("13. suppression logique de fichier\n");
         printf("0. Quitter\n");
         printf("Votre choix : ");
         scanf("%d", &choix);
 
-        switch(choix) {
+ int modeI,modeG;
+ Ms disque;
+ int choix ;
+scanf("%d",&choix);
+ switch(choix) {
             case 1:
                 printf("Initialisation de la mémoire secondaire\n");
-                // Appeler la fonction d'initialisation ici
+                InitMs(&disque, 20);
                 break;
             case 2:
                 printf("Création d'un fichier\n");
@@ -197,6 +206,22 @@ int main() {
                 printf("Votre choix d'organisation interne: ");
                 scanf("%d", &modeI);
                 // Créer le fichier en fonction des choix d'organisation
+                
+              if(modeG=0){
+                 if(modeI=0){
+                    creerfichierCO(FILE* disque); 
+                 }
+                 else{
+                    creationLL_OF(disque,ms,nbrbloc);
+                 }
+              }else 
+              {
+                 if(modeI=0){
+                      creerFichier(disque);
+                  }else {
+                      chargerFileTNOF(disque);
+                  }  
+              }
                 break;
             case 3:
                 // Afficher l'état de la mémoire secondaire
@@ -204,25 +229,161 @@ int main() {
                 break;
             case 4:
                 printf("Affichage des métadonnées du fichier :\n");
-                // Afficher les métadonnées
+                sstring nomfichier;
+                scanf("%s",&nomfichier);
+                Afichemetadonnne(disque,nomfichier);
                 break;
             case 5:
                 printf("Recherche d'enregistrement\n");
+                printf("Votre choix d'organisation globale: ");
+                scanf("%d", &modeG);
+                printf("Votre choix d'organisation interne: ");
+                scanf("%d", &modeI);
+                
+              if(modeG=0){
+                 if(modeI=0){
+                int ID;
+                scanf("%d",ID)
+                  rechercheebregistrement(disque,nomfichier,ID); 
+                 }
+                 else{
+                    reseachDis(disque,ms,fichernom) ;
+                 }
+              }else 
+              {
+                 if(modeI=0){
+                     int id;
+                     sacanf("%d",&id)
+                      rechercherparid(disque,id);
+                  }else {
+                      int id;
+                      scanf("%d",&id);
+                      RechercheFILETOF(disque,id);
+                  }  
+              }
                 break;
             case 6:
                 printf("Insertion d'enregistrement\n");
+               
+                printf("Votre choix d'organisation globale: ");
+                scanf("%d", &modeG);
+                printf("Votre choix d'organisation interne: ");
+                scanf("%d", &modeI);
+                 printf("Donnez le nom de fichier  ");
+                 string  nomfichier ;
+                 scanf("%s",&nomfichier);
+                scanf("%d", &modeI);
+                //  le fichier en fonction des choix d'organisation
+              if(modeG=0){
+                 if(modeI=0){
+                     insertionenregistrement(disque,nomfichier);
+                 }
+                 else{
+                    insertDis(disque,searchld,nomfichier) ;
+                 }
+              }else 
+              {
+                 if(modeI=0){
+                     IsererEnregistrement(disque,nomfichier,ms);
+                  }else {
+                     IsertiofileTNOF(disque,nomfichier);
+                  }  
+              }
                 break;
             case 7:
                 printf("Suppression d'enregistrement\n");
+                
+                printf("Votre choix d'organisation globale: ");
+                scanf("%d", &modeG);
+                printf("Votre choix d'organisation interne: ");
+                scanf("%d", &modeI);
+                 printf("Votre nom de fichier: ");
+                scanf("%d", &filename);
+                // le fichier en fonction des choix d'organisation
+                //supretio physique
+              if(modeG=0){
+                 if(modeI=0){
+                     suprimereregistrement(disque,fileame,ID);
+                 }
+                 else{
+                     suppPhysique(disque,ms,fileame);
+                 }
+              }else 
+              {
+                 if(modeI=0){
+                     int id  ;
+                     scanf("%d",&id);
+                      supretionPhysique(disque,id,ms);
+                  }else {
+                      supprPhysiqueDefichierTNOF(disque,filename);
+                  }  
+              }
                 break;
             case 8:
                 printf("Défragmentation effectuée\n");
+                 
+                printf("Votre choix d'organisation globale: ");
+                scanf("%d", &modeG);
+                printf("Votre choix d'organisation interne: ");
+                scanf("%d", &modeI);
+                string nomfichier;
+                // le fichier en fonction des choix d'organisation
+              if(modeG=0){
+                 if(modeI=0){
+                     
+                     scanf("%s",&nomfichier);
+                     defragmentation(disque,nomfichier);
+                 }
+                 else{
+                      printf("donner nom fichier: ");
+                      scanf("%s", &nomfichier);
+                     deleteL_OF(disque,ms,nomfichier);
+                 }
+              }else 
+              {
+                 if(modeI=0){
+                      defragmentation(disque,ms);
+                  }else {
+                      defragmetationFileTNOF(disque);
+                  }  
+              }
                 break;
             case 9:
                 printf("Suppression de fichier\n");
+                 printf("Création d'un fichier\n");
+                printf("Votre choix d'organisation globale: ");
+                scanf("%d", &modeG);
+                printf("Votre choix d'organisation interne: ");
+                scanf("%d", &modeI);
+                printf("donner  le nom du fichier");
+                scan("%s",fichiern);
+                // le fichier en fonction des choix d'organisation
+              if(modeG=0){
+                 if(modeI=0){
+                     suprimerFCO(disque,fichiern);
+                 }
+                 else{
+                     supprimerPhysique(disque,fichiern);
+                 }
+              }else 
+              {
+                 if(modeI=0){
+                      Supprimerfichier(disque,fichiern);
+                      
+                  }else {
+                      supprPhysiqueTNOF(disque,id);
+                  }  
+              }
                 break;
             case 10:
                 printf("Renommage de fichier\n");
+                string  newname,lastname;
+                printf("donner  le nom du fichier que  vous voulez change son nom");
+                scanf("%s",&lastname);
+                printf("donner le nouveau nom");
+                scanf("%s",&newname);
+                changeFileName( disque ,newname ,lastname );
+                
                 break;
             case 11:
                 printf("Compactage de la mémoire secondaire\n");
@@ -234,8 +395,41 @@ int main() {
                   compactMS(/*latableallocationn*/);
                 break;
             case 12:
-                printf("Mémoire secondaire vidée\n");
+                printf("Mémoire secondaire vidée\n
+               viderMS(disque);
                 break;
+            case  13:
+                printf("suppretion logique d'enregistrement");
+                string nomfichier;
+                sacnf("%d",&nomfichier);
+                 printf("Création d'un fichier\n");
+                printf("Votre choix d'organisation globale: ");
+                scanf("%d", &modeG);
+                printf("Votre choix d'organisation interne: ");
+                scanf("%d", &modeI);
+                string nomfichier;
+                printf("VDoer le   nom de  fichier: ");
+                scanf("%s", &nomfichier);
+                int id  ;
+                printf("Donner  le id de votre enregistrement : ");
+                scanf("%d", &id);
+              if(modeG=0){
+                 if(modeI=0){
+                    suppretionLogique(disque , id,nomfichier);
+                 }
+                 else{
+                     string nomfichier;
+                     scanf("%s",&nomfichier);
+                    suppretionLogique(disque , id,nomfichier);
+                 }
+              }else 
+              {
+                 if(modeI=0){
+                      SuppressionLogique(disque,id,ms);
+                  }else {
+                      supprLogiqueFileTNOF(disque,id);
+                  }  
+              }
             case 0:
                 printf("Programme terminé !\n");
                 break;
@@ -243,8 +437,5 @@ int main() {
                 printf("Choix invalide. Veuillez réessayer.\n");
         }
     } while (choix != 0);
-
-    return 0;
+return0;
 }
-
-
