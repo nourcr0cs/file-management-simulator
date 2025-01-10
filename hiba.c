@@ -54,7 +54,7 @@ typedef struct
 {
 
   int nbrblocutil; //nombre de bloc utilise
-  int nbrbloc; // Nombre total de blocs
+  int nbrbloc ; // Nombre total de blocs
   int fb;
 
 }MS;
@@ -144,7 +144,8 @@ void compactageDisque(FILE *disque) {
     int blocCourant = 0;
     
     // Lire le bloc d'allocation
-    fseek(disque, 0, SEEK_SET);
+    rewind(disque);
+    //fseek(disque, 0, SEEK_SET);
     fread(&buffer, sizeof(Bloc), 1, disque);
     
     if (buffer.typedebloc != 3) {
@@ -191,7 +192,8 @@ void compactageDisque(FILE *disque) {
 
 void metajourtableallocation (FILE* disque, int blocIndex, int etat)  {
     Bloc buffer;
-    fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
+    rewind(disque);
+    fseek(disque, 0 *sizeof(Bloc), SEEK_SET);
     fread(&buffer, sizeof(Bloc), 1, disque);
 
     if (buffer.typedebloc != 3) {
@@ -255,7 +257,7 @@ void afficherEtatMemoire(BlocAllocation *blocAlloc) {
         Bloc buffer;
         rewind(disque);
         buffer.typedebloc=3;
-        fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
+        //fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
         fread(&buffer, sizeof(Bloc), 1, disque);
 
         if (buffer.typedebloc != 3) {
@@ -301,10 +303,13 @@ return MT;
     maladie malade;
     int cpt=-1;
     int blocNbr;
- 
+    int enre;
+    int i=0;
+ bool compac ;
    int nbrB=0;//nombre de bloc
    int nbrE=0;//nombre de enregistrement  nbr de blocs suffisants =nbrElement\tailleBloc
-   if (!verifierEspaceSuffisant(disque,blocVolu)) {
+   compac= verifierEspaceSuffisant(disque,blocVolu);
+   if (!compac) {
     compactageDisque(disque);
    }          
     rewind(disque);
@@ -312,14 +317,15 @@ return MT;
     fread(&buffer, sizeof(buffer), indexBloc+1 , disque);
     // pour metre le curseur au bonne position 
    int nbrMalade = 0;
-  do {
-
-    for(int i=0;i<facteur_blocage;i++) {
+   if (enre > facteur_blocage)
+     enre = enre / facteur_blocage + enre % facteur_blocage ;
+ 
+    while(nbrMalade <= MT.Taillefichierenregistrements && malade.id !=-1){    
     nbrMalade++;
-    printf("----------------------------------");
+    printf("---------------------------------- \n");
     printf("entrer la reference de malade %d:\n",nbrMalade);
     scanf("%d",&malade.id);
-    if(malade.id==-1) break; // si id=-1 alors on arrete de remplir le bloc
+ // si id=-1 alors on arrete de remplir le bloc
     printf("entrer le nom de malade %d:\n",nbrMalade);
     scanf("%s",malade.name);
     printf("entrer l'age de malade %d :\n",nbrMalade);
@@ -340,16 +346,16 @@ return MT;
     buffer.content.fileData.T[i].nmbrdevisite =malade.nmbrdevisite;//nbrvisite
     copyString(buffer.content.fileData.T[i].adresse , malade.adresse);//adress
     buffer.content.fileData.T[i].suprimelogiqument =malade.suprimelogiqument;
-
-     }
+    i++;
+    if (i==facteur_blocage-1) i=0;
+     
+     metajourtableallocation ( disque, indexBloc+nbrB, 1);
        nbrB =nbrB+1;
        buffer.typedebloc=2;
-       fwrite(&buffer, sizeof(buffer), 1, disque);
-       metajourtableallocation ( disque, nbrB, 1); // 1 est plain
        buffer.content.allocation.nbrbloc++;
       if (cpt==1) blocNbr = buffer.content.allocation.nbrbloc++;
-      } while (nbrMalade != MT.Taillefichierenregistrements );
-
+    }
+      fwrite(&buffer, sizeof(buffer), indexBloc+nbrB , disque);
 
     buffer.content.metadataTable.nbrMetadonnees++;
     buffer.typedebloc=1;
@@ -368,7 +374,9 @@ return MT;
    nbrB++;
 
    fwrite(&buffer, sizeof(buffer), 1, disque);
-   buffer.content.allocation.nbrbloc++;
+   rewind (disque);
+   fread(&buffer, sizeof(buffer), 1, disque);
+   buffer.content.allocation.ms.nbrbloc++;
    printf("le fichier est crée avec succès ");
    }
  
@@ -376,8 +384,7 @@ return MT;
   void InsertionfileTNOF(FILE *disque  ,maladie newmalade ){
     Bloc buffer;
     rewind(disque);
-    fread(&buffer, sizeof(buffer), 1, disque);
-    //   les informations de nouveau malade
+    fread(&buffer, sizeof(buffer), 1, disque);       //   les informations de nouveau malade
     printf("entrer les informations de nouveau malade :\n pour l'arrêt vous pouvez entrer -1 pour la reference \n");
     printf("entrer la reference de malade:\n ");
     scanf("%d",&newmalade.id);
@@ -392,18 +399,12 @@ return MT;
     printf("entrer le sexe de malade :\n");
     scanf("%s",newmalade.sexe);
 
-        
-   
     int indexMeta= buffer.content.metadataTable.nbrMetadonnees-1;
-
-
     fread(&buffer, sizeof(buffer), 1, disque);
     int iend =buffer.content.metadataTable.T[indexMeta].Taillefichierenregistrements;
     if (iend/ buffer.content.metadataTable.T[indexMeta].Taillefichierenregistrements!=0){   // il y a espace
     fseek(disque,0,SEEK_END);
     newmalade.suprimelogiqument=0;
-
-   
     buffer.content.fileData.T[iend+1].id =newmalade.id;//id
     copyString(buffer.content.fileData.T[iend+1].name, newmalade.name);//name
     copyString(buffer.content.fileData.T[iend+1].sexe, newmalade.sexe);//sexe
@@ -419,8 +420,6 @@ return MT;
     if (!verifierEspaceSuffisant(disque,1)) {
     compactageDisque(disque);
    }          
-   
-
     buffer.content.fileData.T[i].id =newmalade.id;//id
     copyString(buffer.content.fileData.T[i].name,newmalade.name);//name
     copyString(buffer.content.fileData.T[i].sexe,newmalade.sexe);//sexe
@@ -433,14 +432,10 @@ return MT;
       buffer.content.metadataTable.T[indexMeta].Taillefichierblocs++;
       int l = buffer.content.metadataTable.T[indexMeta].Taillefichierblocs + buffer.content.metadataTable.T[indexMeta].Adrpremierbloc;
        metajourtableallocation (disque,l, 1);
-
-    }
-
-
-    int index= buffer.content.metadataTable.nbrMetadonnees;
+}
+   int index= buffer.content.metadataTable.nbrMetadonnees;
     buffer.content.metadataTable.T[index].Taillefichierenregistrements++;
     buffer.typedebloc=1;
-
     fwrite(&buffer, sizeof(buffer), 1, disque);   // to cheak later !!!
 
   }
@@ -524,8 +519,7 @@ for ( i=dep ; i<facteur_blocage-2; i++){ //decalage des element dans le bloc
     buffer.content.fileData.T[i].nmbrdevisite =buffer.content.fileData.T[i+1].nmbrdevisite;//nbrvisite
     copyString(buffer.content.fileData.T[i].adresse,buffer.content.fileData.T[i+1].adresse);//adress
     buffer.content.fileData.T[i].suprimelogiqument =buffer.content.fileData.T[i+1].suprimelogiqument ;
-
-}
+    }
 }
 // decalage intreBloc
 fseek(disque, -1,SEEK_END); // maitre le dernier element dans le bloc ou l'element qu'on a supprime
@@ -576,15 +570,10 @@ while (fread(&buffer,sizeof(buffer),1,disque)) {
          // on est dans le fichier metadonnee qui corespond aux ce fichier
          buffer.content.metadataTable.T[metaAct].Taillefichierenregistrements--;
         if (blocVide==1) {
-           buffer.content.metadataTable.T[metaAct].Taillefichierblocs++;
+           buffer.content.metadataTable.T[metaAct].Taillefichierblocs--;
            metajourtableallocation (disque, nbrB, 0); // bloc sera vide
-
-    }
-    }
-    }
-    };
-
- printf("---------------------le malade %d est supprimé physiquement---------------------\n", buffer.content.fileData.T[i].id);
+}}}};
+printf("---------------------le malade %d est supprimé physiquement---------------------\n", buffer.content.fileData.T[i].id);
 
 }// tout les cas sont traiter normalement
 
@@ -607,7 +596,6 @@ for (int i=0;i<facteur_blocage;i++){
 
 
  void supprPhysiqueDeFichierTNOF(FILE *disque , char filename[]){
-  // 1 = metadata, 2 = file data, 3 = allocation
  Bloc buffer;
  int adr,taille;
  int nbrB=-1;
@@ -623,14 +611,8 @@ for (int i=0;i<facteur_blocage;i++){
          taille = buffer.content.metadataTable.T[i].Taillefichierblocs;
         for (int j=i;j<facteur_blocage;j++){
           buffer.content.metadataTable.T[j]=buffer.content.metadataTable.T[j+1];
-        }
-
-      }
-    }
-
-  }
-
-  if( buffer.typedebloc == 2 && nbrB == adr){ //on a trouver le fichier a supprimer
+        }}}}
+ if( buffer.typedebloc == 2 && nbrB == adr){ //on a trouver le fichier a supprimer
    for (int i=0; i<facteur_blocage; i++){
     buffer.content.fileData.T[i].id = -2;//id
     buffer.content.fileData.T[i].suprimelogiqument =1;
@@ -641,8 +623,6 @@ for (int i=0;i<facteur_blocage;i++){
   metajourtableallocation (disque, j, 0); // bloc sera vide
   }
   compactageDisque(disque); 
-  //========================COMPACTAGE HERE SIS=============================
- //compactage(disque,&buffer.content.allocation.ms);
  printf("---------------------le fichier %s est supprimé physiquement---------------------\n", filename);
    return;
  }
@@ -656,16 +636,21 @@ for (int i=0;i<facteur_blocage;i++){
 
 
 int main() {
-
+    Bloc bufferm;
+    bufferm.content.allocation.ms.nbrbloc=50;
     int choix ,choix1;
     int modeG;
     int modeI;
     maladie newmalade;
     int id;
     char filename[30];
-
-     FILE* disque = fopen("disque.bin", "r+b"); // Ouvrir le fichier pour lecture/écriture
-     CreeTableAllocation( disque);
+    int nbrsuppression =0;
+     FILE* disque ;
+    
+    
+      disque = fopen("disque.bin", "r+b"); // Ouvrir le fichier pour lecture/écriture
+      CreeTableAllocation( disque);
+    
 
        if (!disque) {
            disque = fopen("disque.bin", "w+b"); // Créer le fichier s'il n'existe pas
@@ -705,7 +690,7 @@ int main() {
                 scanf("%d", &modeI); // 0 ordonnee
                 // mode TNOF
                 if (modeG !=0 && modeI !=0 )  chargerFileTNOF(disque);
-
+               
                 // Créer le fichier en fonction des choix d'organisation
                 break;
             case 3:
@@ -731,6 +716,7 @@ int main() {
                 printf("Suppression d'enregistrement\n");
                 printf("entrer votre choix de suppression \n 1.physique \n 2.logique \n ");
                 scanf("%d", &choix1);
+                if (choix1 == 2) nbrsuppression++;
                  printf("entrer la reference de malade que vous voulez supprimer \n");
                  scanf("%d", &id);
                 if (choix1 == 2) supprLogiqueFileTNOF(disque,id);
@@ -739,6 +725,7 @@ int main() {
                 break;
             case 8:
                 printf("Défragmentation effectuée\n");
+                 if (nbrsuppression > 5 ) defragmentationFileTNOF(disque);
                 break;
             case 9:
                 printf("Suppression de fichier\n");
