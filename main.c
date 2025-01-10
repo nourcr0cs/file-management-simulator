@@ -228,10 +228,61 @@ scanf("%d",&choix);
                 afficherEtatMemoire(NULL); // Exemple d'appel
                 break;
             case 4:
-                printf("Affichage des métadonnées du fichier :\n");
-                sstring nomfichier;
-                scanf("%s",&nomfichier);
-                Afichemetadonnne(disque,nomfichier);
+                printf("Afficher les détails de la mémoire secondaire :\n");
+    afficherMS(disque) ;      
+    Bloc buffer;
+    rewind(disque);
+
+    printf("========== État de la Mémoire Secondaire ==========\n");
+
+    // Parcourir tous les blocs
+    for (int i = 0; i < 20; i++) {
+        fseek(disque, i * sizeof(Bloc), SEEK_SET);
+
+        if (fread(&buffer, sizeof(Bloc), 1, disque) != 1) {
+            printf("Bloc %d : Erreur : Impossible de lire le bloc. Bloc vide ou corrompu.\n", i);
+            continue;
+        }
+
+        printf("Bloc %d : ", i);
+
+        switch (buffer.typedebloc) {
+            case 1: // Bloc de métadonnées
+                printf("Bloc de métadonnées\n");
+                printf("  Nombre de fichiers : %d\n", buffer.content.metadataTable.nbrMetadonnees);
+                printf("  Next : %d\n", buffer.content.metadataTable.next);
+                for (int j = 0; j < buffer.content.metadataTable.nbrMetadonnees; j++) {
+                    printf("    Fichier %d : Adresse premier bloc = %d\n",
+                           j, buffer.content.metadataTable.T[j].Adrpremierbloc);
+                }
+                break;
+
+            case 2: // Bloc de données de fichier
+                printf("Bloc de données de fichier\n");
+                printf("  Nombre d'enregistrements : %d\n", buffer.content.fileData.nbrmaladie);
+                printf("  Next : %d\n", buffer.content.fileData.next);
+                break;
+
+            case 3: // Bloc de table d'allocation
+                printf("Bloc de table d'allocation\n");
+                printf("  Nombre total de blocs : %d\n", buffer.content.allocation.nbrbloc);
+                printf("  Nombre de blocs utilisés : %d\n", buffer.content.allocation.nbrblocutil);
+                for (int j = 0; j < buffer.content.allocation.nbrbloc; j++) {
+                    printf("    Bloc %d : %s\n", j,
+                           buffer.content.allocation.tablelocation[j].etat == 1 ? "Alloué" : "Libre");
+                }
+                break;
+
+            default: // Bloc vide ou type inconnu
+                printf("Erreur : Bloc ne contient aucun type valide.\n");
+                break;
+        }
+    }
+
+    printf("===================================================\n");
+}
+
+                
                 break;
             case 5:
                 printf("Recherche d'enregistrement\n");
