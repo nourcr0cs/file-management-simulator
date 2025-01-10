@@ -65,7 +65,7 @@ typedef struct {
     int typedebloc; // 1 = metadata, 2 = file data, 3 = allocation
 } Bloc;
 // Définition de la fonction afficherEtatMemoire
-void afficherEtatMemoire(BlocAllocation *blocAlloc) {
+void afficherdetaillebloc(BlocAllocation *blocAlloc) {
     printf("Etat de la mémoire secondaire (avec des boîtes):\n\n");
 
     // Afficher les informations globales
@@ -247,7 +247,7 @@ scanf("%d",&choix);
                   rechercheebregistrement(disque,nomfichier,ID); 
                  }
                  else{
-                    reseachDis(disque,ms,fichernom) ;
+                    researchDis(disque,ms,fichernom) ;
                  }
               }else 
               {
@@ -337,7 +337,7 @@ scanf("%d",&choix);
                  else{
                       printf("donner nom fichier: ");
                       scanf("%s", &nomfichier);
-                     deleteL_OF(disque,ms,nomfichier);
+                     defragmentation(disque,ms,nomfichier);
                  }
               }else 
               {
@@ -363,7 +363,7 @@ scanf("%d",&choix);
                      suprimerFCO(disque,fichiern);
                  }
                  else{
-                     supprimerPhysique(disque,fichiern);
+                     deleteL_OF(disque,fichiern);
                  }
               }else 
               {
@@ -395,8 +395,8 @@ scanf("%d",&choix);
                   compactMS(/*latableallocationn*/);
                 break;
             case 12:
-                printf("Mémoire secondaire vidée\n
-               viderMS(disque);
+                printf("Mémoire secondaire vidée\n");
+               viderMS(disque, 20);
                 break;
             case  13:
                 printf("suppretion logique d'enregistrement");
@@ -420,7 +420,7 @@ scanf("%d",&choix);
                  else{
                      string nomfichier;
                      scanf("%s",&nomfichier);
-                    suppretionLogique(disque , id,nomfichier);
+                    suppLogique(disque , id,nomfichier);
                  }
               }else 
               {
@@ -437,5 +437,4 @@ scanf("%d",&choix);
                 printf("Choix invalide. Veuillez réessayer.\n");
         }
     } while (choix != 0);
-return0;
-}
+return 0;

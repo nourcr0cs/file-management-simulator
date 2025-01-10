@@ -350,7 +350,7 @@ void creationL_OF(FILE *disque, MS *ms, int nbrbloc) {
     }
     //skipping the pt two wla three (alloc + metadataTable), pour l'instant rni dyra 3 (whda alloc, zodj metadata)
     for ( i = 3; i < ms->nbrbloc; i++) {
-        if (ms->tablelocation[i].etat == 0) {
+        if (ms->[i].etat == 0) {
             ptDataBlock = i;
             break;
         }
