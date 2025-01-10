@@ -165,29 +165,76 @@ void chargerFichier(FILE *disque, MS *ms) {
 
 //insertion ...................................................................
 
-
 void insererEnregistrement(FILE *disque, maladie enregistrement, MS *ms) {
-    fseek(disque, 0, SEEK_SET);
-    Bloc buffer;
-    fread(&buffer, sizeof(Bloc), 1, disque);
-    
-    // Chercher un bloc disponible
-    int i;
-    for ( i = 0; i < ms->nbrbloc; i++) {
-        if (buffer.content.allocation.tablelocation[i].etat == 0) {
-            // Insérer l'enregistrement dans le bloc disponible
-            buffer.content.fileData.T[i] = enregistrement;
-            buffer.content.fileData.nbrmaladie++;
-            buffer.content.allocation.tablelocation[i].etat = 1; // Marquer le bloc comme plein
-            break;
+    int i, j ,MAX_BLOCKS;
+    bool inserted = false;
+    int Taillefichierenregistrements ;
+    rewind(disque);
+    fread(&buffer, sizeof(buffer), 1, disque);
+    //   les informations de nouveau malade
+    printf("entrer les informations de nouveau malade :\n pour l'arrêt vous pouvez entrer -1 pour la reference \n");
+    printf("entrer la reference de malade:\n ");
+    scanf("%d",&newmalade.id);
+    printf("entrer le nom de malade :\n");
+    scanf("%s",newmalade.name);
+    printf("entrer l'age de malade:\n");
+    scanf("%d",&newmalade.age);
+    printf("entrer le nombre de visite :\n");
+    scanf("%d",&newmalade.nmbrdevisite);
+    printf("entrer l'adress de malade :\n");
+    scanf("%s",newmalade.adresse);
+    printf("entrer le sexe de malade :\n");
+    scanf("%s",newmalade.sexe);
+    // Chercher un bloc libre ou un bloc où insérer (à partir du bloc 3)
+    for (i = 3; i < Taillefichierenregistrements ; i++) {  // À partir du bloc 3 (bloc 1 et 2 sont réservés)
+        if (  ms->BlocData[i].nbrmaladie < Taillefichierenregistrements) {
+            // Si le bloc est partiellement plein, on insère dans l'ordre croissant ou décroissant
+            for (j = 0; j < ms->BlocData[i].nbrmaladie; j++) {
+                // Vérification pour insérer en ordre croissant ou décroissant selon le premier ID
+                if ((ms->BlocData[i].T[j].id > enregistrement.id) || (ms->BlocData[i].T[0].id < enregistrement.id)) {
+                    // Décalage des enregistrements pour insérer
+                    int k;
+                    for ( k = ms->BlocData[i].nbrmaladie; k > j; k--) {
+                        ms->BlocData[i].T[k] = ms->BlocData[i].T[k - 1];
+                    }
+                    ms->BlocData[i].T[j] = enregistrement;
+                    ms->BlocData[i].nbrmaladie++;
+                    inserted = true;
+                    break;
+                }
+            }
+            if (inserted) break; // Insertion réussie
         }
     }
-    
-    // Mettre à jour le disque
-    fseek(disque, 0, SEEK_SET);
-    fwrite(&buffer, sizeof(Bloc), 1, disque);
-    printf("Enregistrement inséré avec succès.\n");
+    // Si aucune place n'a été trouvée, on vérifie le compactage et défragmentation
+    if (!inserted) {
+        // Recherche d'un bloc libre ou d'un espace pour déplacer
+        for (i = 3; i < Taillefichierenregistrements - 1; i++) {
+            if (ms->BlocData[i].nbrmaladie == Taillefichierenregistrements) {
+                if (ms->BlocData[i + 1].nbrmaladie == 0) {
+                    // Déplacement des enregistrements dans le bloc suivant si vide
+                    ms->BlocData[i + 1] = ms->BlocData[i];
+                    ms->BlocData[i].nbrmaladie = 0;  // Libérer le bloc original
+                    insererEnregistrement(disque, enregistrement, ms);  // Réinsérer après déplacement
+                    break;
+                }
+            }
+        }
+        if (!inserted) {
+            printf("Aucun espace disponible pour insérer le nouvel enregistrement.\n");
+        }
+    }
+    // Mettre à jour le fichier disque avec les changements
+    fseek(disque, 0, SEEK_SET); // Revenir au début du fichier
+    for (i = 0; i < MAX_BLOCKS; i++) {
+        // Sauvegarder les informations des blocs dans le fichier
+        fwrite(&ms->blocData[i], sizeof(BlocData), 1, disque);
+    }
+    // Sauvegarder la table d'allocation des blocs
+    fseek(disque, sizeof(BlocData) * MAX_BLOCKS, SEEK_SET);
+    fwrite(&ms->allocation, sizeof(BlocAllocation), 1, disque);
 }
+
 
 
 

@@ -9,6 +9,7 @@
 #define FB 10 
 #define MAX_BLOCKS 50
 
+
 typedef struct {
     char Nomdufichier[20];
     int Taillefichierblocs;
@@ -40,12 +41,11 @@ typedef struct {
     int etat;      //0 = empty, 1 = full
 } Tableallocation;
 
-typedef struct
-{
-  int nbrblocutil; //used blocs
-  int nbrbloc; 
-  int fb;
-}MS;
+typedef struct MS {
+    int nbrblocutil; //used blocs
+    int nbrbloc; 
+    int fb;
+} MS;
 
 typedef struct {
     fichiermetadonnees T[FB]; 
@@ -84,6 +84,61 @@ typedef struct {
     int numBloc;
     int deplacement;
 } position;
+
+typedef struct {
+    int blockNumber;
+    Bloc originalContent;
+} BlockBackup;
+
+typedef struct {
+    BlockBackup* backups;
+    int backupCount;
+    bool isActive;
+} Transaction;
+
+
+bool beginTransaction(Transaction* trans) {
+    trans->backups = malloc(sizeof(BlockBackup) * MAX_BLOCKS);
+    trans->backupCount = 0;
+    trans->isActive = true;
+    return true;
+}
+
+bool backupBlock(FILE* disque, Transaction* trans, int blockNum) {
+    if (!trans->isActive) return false;
+    
+    Bloc buffer;
+    fseek(disque, blockNum * sizeof(Bloc), SEEK_SET);
+    fread(&buffer, sizeof(Bloc), 1, disque);
+    
+    trans->backups[trans->backupCount].blockNumber = blockNum;
+    trans->backups[trans->backupCount].originalContent = buffer;
+    trans->backupCount++;
+    
+    return true;
+}
+
+bool commitTransaction(Transaction* trans) {
+    free(trans->backups);
+    trans->backupCount = 0;
+    trans->isActive = false;
+    return true;
+}
+
+bool rollbackTransaction(FILE* disque, Transaction* trans) {
+    if (!trans->isActive) return false;
+    
+    // restore all blocks to their original state
+    for (int i = 0; i < trans->backupCount; i++) {
+        fseek(disque, trans->backups[i].blockNumber * sizeof(Bloc), SEEK_SET);
+        fwrite(&trans->backups[i].originalContent, sizeof(Bloc), 1, disque);
+    }
+    
+    free(trans->backups);
+    trans->backupCount = 0;
+    trans->isActive = false;
+    return true;
+}
 
 bool verifierEspaceSuffisant(FILE* disque, int nbrBlocsVoulu) {
     Bloc buffer;
@@ -132,7 +187,7 @@ int obtenirNombreBlocs(FILE* disque, int option) {
     }
 }
 
-// Function to update the number of blocks used or total blocks
+//Function to update the number of blocks used or total blocks
 void mettreAJourNombreBlocs(FILE* disque, int option, int nouvelleValeur) {
     Bloc buffer;
 
@@ -202,54 +257,80 @@ void initMS(FILE *disque, MS *ms, int nbrbloc) {
 
 
 
+/**
+ * @brief Initializes the metadata for a new file
+ * @param disque Pointer to the disk file
+ * @param i Index in the metadata table
+ * @throws None
+ * @details This function prompts the user for file information and initializes
+ *          the metadata block with the provided information. It handles:
+ *          - File name
+ *          - Organization mode
+ *          - Record ordering
+ *          - Number of records
+ */
+
+
 void initMetadonnees(FILE *disque, int i) {
-    BlocMetadonnees metadataTable;
     Bloc buffer;
-    //i is for num of record
+    buffer.typedebloc = 1; //Set block type to metadata
+    
+    // Read existing block first
+    fseek(disque, sizeof(Bloc), SEEK_SET);
+    fread(&buffer, sizeof(Bloc), 1, disque);
+    
     //infos that the user should enter
     printf("Enter the file name: ");
-    scanf("%s", metadataTable.T[i].Nomdufichier);
+    scanf("%s", buffer.content.metadataTable.T[i].Nomdufichier);
 
     printf("Enter the global organization mode (0 for chained, 1 for contigue): ");
-    scanf("%s", metadataTable.T[i].Modeorganisationglobale);
+    scanf("%d", &buffer.content.metadataTable.T[i].Modeorganisationglobale);
 
     printf("Do you want it to be ordored or non-ordored (0 for ordored, 1 for non-ordored): ");
-    scanf("%s", metadataTable.T[i].Modeorganisationinterne);
+    scanf("%d", &buffer.content.metadataTable.T[i].Modeorganisationinterne);
 
     printf("Enter the number of records in total: ");
-    scanf("%s", metadataTable.T[i].Taillefichierenregistrements);
+    scanf("%d", &buffer.content.metadataTable.T[i].Taillefichierenregistrements);
 
-
-    metadataTable.T[i].Adrpremierbloc = -1;
-
-    //to copy directly an entire bloc = fread
-    memcpy(&buffer.content.metadataTable.T[i], &metadataTable, sizeof(metadataTable));
+    buffer.content.metadataTable.T[i].Adrpremierbloc = -1;
     buffer.content.metadataTable.nbrMetadonnees++;
+
+    // Write back the updated block
     fseek(disque, sizeof(Bloc), SEEK_SET);
     fwrite(&buffer, sizeof(Bloc), 1, disque);
 
-    printf("metadataTable initialized successfully.\n");
+    printf("Metadata initialized successfully.\n");
 }
 
-
-
-
-void creationL_OF(FILE *disque,MS *ms, int nbrbloc) {
+/**
+ * @brief Creates a new file in the system
+ * @param disque Pointer to the disk file
+ * @param ms Pointer to the memory structure
+ * @param nbrbloc Number of blocks available
+ * @return void
+ * @throws None
+ * @details Creates a new file by:
+ *          1. Checking for available space
+ *          2. Finding an empty metadata slot
+ *          3. Initializing metadata
+ *          4. Allocating first data block
+ *          5. Updating allocation table
+ */
+void creationL_OF(FILE *disque, MS *ms, int nbrbloc) {
     Bloc buffer;
     int ptDataBlock = -1;
     int i = 0;
     int metadataFound = 0;
-
+    int taille = 1; // Define taille variable
 
     if ((ms->nbrblocutil + taille) > ms->nbrbloc) {
         printf("Espace insuffisant.\n");
-        free(nomFichier); 
-        return NULL;
+        return;
     }
 
-        //I asssumed the bloc with index 1 is for metadata 
-        int metadataBlockIndex = 1;
-        while (metadataBlockIndex != -1) {
+    //I asssumed the bloc with index 1 is for metadata 
+    int metadataBlockIndex = 1;
+    while (metadataBlockIndex != -1) {
         rewind(disque);
         fseek(disque, metadataBlockIndex * sizeof(Bloc), SEEK_SET);
         fread(&buffer, sizeof(Bloc), 1, disque);
@@ -303,16 +384,14 @@ void creationL_OF(FILE *disque,MS *ms, int nbrbloc) {
         }
 
 
-    metadonnees.Taillefichierblocs = ceil((double)metadonnees.Taillefichierenregistrements / facteur_blocage)+1;
+    // Calculate blocks needed based on records and blocking factor
+    int facteur_blocage = FB; // Using FB constant
+    fichiermetadonnees metadonnees = buffer.content.metadataTable.T[i];
+    metadonnees.Taillefichierblocs = ceil((double)metadonnees.Taillefichierenregistrements / facteur_blocage) + 1;
 
-
-    fseek(disque, j*sizeof(Bloc), SEEK_SET);
-    fwrite(&metadataTable, sizeof(Bloc), 1, disque);
-
-
-    //just to test if its a success
-    printf("new data block at address: %d\n", ptDataBlock);
-
+    // Write back updated metadata
+    fseek(disque, sizeof(Bloc), SEEK_SET);
+    fwrite(&buffer, sizeof(Bloc), 1, disque);
 }
 }
 
@@ -345,27 +424,31 @@ adressemetadonnees recherchemetadonnees(FILE*disque,const char* nomfichier){
 }
 
 
-compactMS(MS* ms){
-rewind( ms );
-bloc buff1,buff2;
-int i ,j;//i parcours la tablallocation  et j on l utilse en cas de deblacement
- fread(buff1, ms.nbrbloc* sizeof(Tableallocation),1,ms);
- //tant que on est pas arriver a la fin de la ms 
- while (i < ms.nbrbloc){
-    if ( ms.tableallocation[i].etat == 0 ){
-        for(j=i;j<ms.nbrbloc;j++){
-        fseek(ms,ms.tableallocation[j+1].adrbloc,SEEK_SET);
-        fread(&buff2,sizeof(bloc),1,ms);
-        fseek(ms,- sizeof(bloc),SEEK_CUR); //declacer toute les add de tous les block pour complet le vide et avoir un vide a la fin
-        fwrite(&buff2,ms.tableallocation[j].adrbloc,sizeof(bloc),1,ms);
-       //metre ajour l'etat du bloc qui doits etres l etat de son prochain vue les decalges a droit
-       ms.tablealocation[j].etat=ms.tablealocation[j+1].etat;
-     }
+void compactage(Tableallocation* blocAlloc) {
+    int indexLibre = 0;  // L'indice du prochain bloc vide à remplir
 
+    // Parcours de tous les blocs pour déplacer les blocs pleins
+    for (int i = 0; i < 20; i++) {
+        if (BlocAllocation->tablelocation[i].etat == 1) {  // Si le bloc est plein
+            if (i != indexLibre) {  // Si ce n'est pas déjà à la bonne position
+                // Déplacer le bloc plein vers la position vide
+                BlocAllocation.tablelocation[indexLibre] = BlocAllocation.tablelocation[i];
+                BlocAllocation.tablelocation[i]->etat = 0;  //Le bloc déplacé devient vide
+            }
+            indexLibre++;  //on passe à la prochaine case vide
+        }
     }
-     i++;
+
+    // Après le compactage, tous les blocs à partir de indexLibre seront vides
+    for (int i = indexLibre; i < 20; i++) {
+        BlocAllocation.tablelocation[i].etat = 0;  //Marquer les blocs comme vides
     }
- }
+
+    printf("La mémoire a été compactée.\n");
+}
+
+
+
 
 int liremetadonnees(FILE*disque, const char* nomFichier, int caracteristique) {
     Bloc buffer;
@@ -660,7 +743,7 @@ void insertDis(FILE *disque, MS *ms, int nbrbloc, const char* nomFichier) {
     // Get address of the first block of the target file, then we get to the next block by .next
     lock = liremetadonnees(disque, nomFichier, 3);
 
-    // To get the address of the first block, then we start following the .next of this block to the new block
+    //To get the address of the first block, then we start following the .next of this block to the new block
     for (i = lock; i < nbrbloc; i++) {
         fseek(disque, i * sizeof(Bloc), SEEK_SET);
         fread(&prevBuffer, sizeof(Bloc), 1, disque);
@@ -734,8 +817,15 @@ void insertDis(FILE *disque, MS *ms, int nbrbloc, const char* nomFichier) {
     mettreAJourNombreBlocs(disque, 1, nbrBlocsUtilises + 1);
 }
 
-
-
+/**
+ * @brief Searches for a record in the file system
+ * @param disque Pointer to the disk file
+ * @param searchId ID of the record to find
+ * @param nomFichier Name of the file to search in
+ * @return position Structure containing block number and displacement
+ * @throws None
+ * @note Returns {-1, -1} if record is not found
+ */
 position researchDis(FILE *disque, int searchId, const char* nomFichier) {
     Bloc buffer;
     int recordFound = 0;
@@ -893,11 +983,88 @@ void afficherMemoireSecondaire(FILE* disque, int nombreBlocs) {
     printf("========== Fin de l'état de la Mémoire Secondaire ==========\n");
 }
 
+void MAJtaballocation(MS *ms, int blocIndex, int etat) {
+    if (blocIndex >= 0 && blocIndex < ms->nbrbloc) {
+        ms->nbrblocutil += (etat == 1) ? 1 : -1;
+        // Update allocation table state
+        // This should update the actual allocation table in the disk
+    }
+}
+
+bool deleteL_OF(FILE* disque, MS* ms, const char* nomFichier) {
+    // Initialize transaction
+    Transaction trans;
+    if (!beginTransaction(&trans)) {
+        printf("Erreur: Impossible de démarrer la transaction.\n");
+        return false;
+    }
+
+    // Get file metadata
+    adressemetadonnees adresse = recherchemetadonnees(disque, nomFichier);
+    if (adresse.numerodebloc == -1) {
+        printf("Erreur: Fichier introuvable.\n");
+        return false;
+    }
+
+    // Backup metadata block
+    backupBlock(disque, &trans, adresse.numerodebloc);
+
+    // Read metadata to get first data block
+    Bloc buffer;
+    fseek(disque, adresse.numerodebloc * sizeof(Bloc), SEEK_SET);
+    fread(&buffer, sizeof(Bloc), 1, disque);
+
+    int currentBlock = buffer.content.metadataTable.T[adresse.index].Adrpremierbloc;
+    
+    // Backup and free all data blocks
+    while (currentBlock != -1) {
+        // Backup current block before modification
+        backupBlock(disque, &trans, currentBlock);
+        
+        // Read next block address before freeing current
+        fseek(disque, currentBlock * sizeof(Bloc), SEEK_SET);
+        fread(&buffer, sizeof(Bloc), 1, disque);
+        int nextBlock = buffer.content.fileData.next;
+
+        // Update allocation table
+        metajourtableallocation(disque, currentBlock, 0);
+        
+        currentBlock = nextBlock;
+    }
+
+    // Clear metadata entry
+    fseek(disque, adresse.numerodebloc * sizeof(Bloc), SEEK_SET);
+    fread(&buffer, sizeof(Bloc), 1, disque);
+    
+    // Shift remaining metadata entries
+    for (int i = adresse.index; i < buffer.content.metadataTable.nbrMetadonnees - 1; i++) {
+        buffer.content.metadataTable.T[i] = buffer.content.metadataTable.T[i + 1];
+    }
+    buffer.content.metadataTable.nbrMetadonnees--;
+
+    // Write updated metadata block
+    fseek(disque, adresse.numerodebloc * sizeof(Bloc), SEEK_SET);
+    fwrite(&buffer, sizeof(Bloc), 1, disque);
+
+    // Update block count
+    int blocCount = obtenirNombreBlocs(disque, 1);
+    mettreAJourNombreBlocs(disque, 1, blocCount - 1);
+
+    // If everything succeeded, commit the transaction
+    if (commitTransaction(&trans)) {
+        printf("Fichier '%s' supprimé avec succès.\n", nomFichier);
+        return true;
+    } else {
+        // If something went wrong, rollback
+        rollbackTransaction(disque, &trans);
+        printf("Erreur: La suppression a échoué. Opération annulée.\n");
+        return false;
+    }
+}
 
 int main() {
     printf("Program started successfully!\n");
 
-    // Open the file for reading and writing, or create it if it doesn't exist
     FILE* disque = fopen("disque.bin", "r+b");
     if (!disque) {
         disque = fopen("disque.bin", "w+b");
@@ -905,6 +1072,15 @@ int main() {
             printf("Error: Could not create disque.bin.\n");
             return 1;
         }
+        
+        // Initialize MS structure
+        MS ms;
+        ms.nbrbloc = MAX_BLOCKS;
+        ms.fb = FB;
+        ms.nbrblocutil = 1;
+        
+        // Initialize disk with allocation block
+        initMS(disque, &ms, MAX_BLOCKS);
     }
 
     int choix;
@@ -939,10 +1115,10 @@ int main() {
                 scanf("%d", &modeG);
                 printf("Votre choix d'organisation interne: ");
                 scanf("%d", &modeI);
-                // Créer le fichier en fonction des choix d'organisation
+                //créer le fichier en fonction des choix d'organisation
                 break;
             case 3:
-                // Afficher l'état de la mémoire secondaire
+                //afficher l'état de la mémoire secondaire
                 afficherEtatMemoire(NULL); // Exemple d'appel
                 break;
             case 4:
