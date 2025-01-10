@@ -1,162 +1,160 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <stdbool.h>
-#include <math.h>
-typedef struct 
-{
-  char Nomdufichier[20];
-  int Taillefichierblocs;
-  int Taillefichierenregistrements;
-  int Adrpremierbloc;  //adresse  du 1 bloc 
-  int Modeorganisationglobale; // si est =0 alors chaine
-  int Modeorganisationinterne;  // si est=0 alors ordone
-}fichiermetadonnes;
 
+// Définir la structure fichiermetadonnes
+typedef struct {
+    char nom[50];
+    int taille;
+    int blocDebut;
+} fichiermetadonnes;
 
-typedef struct 
-{
-  int id;               
-  char name[15];  
-  int age;
-  char sexe[10];
-  char adresse[30];
-  int nmbrdevisite;
-  int suprimelogiqument;// 1 si est suprimé logiquement
-
-}maladie;
+// Définir les structures
 typedef struct {
-    int adrdebloc; // adresse de bloc
-    int etat;      // si vide = 0 pleine = 1
-} Tableallocation;
-typedef struct {
-    int nbrblocutil; // nombre de bloc utilise
-    int nbrbloc;
-    int FB;
-} MS;
-typedef struct {
-    Tableallocation tablelocation[20];
-    MS ms;
-} BlocAllocation;
+    int etat;
+    int adrdebloc;
+} TableLocation;
 
 typedef struct {
-    fichiermetadonnes T[20]; // Tableau de métadonnées
-    int nbrMetadonnees;       // Nombre actuel de métadonnées dans ce bloc
-    int next;
-} BlocMetadonnees;
-typedef struct 
-{
-    maladie T[20];
-    int nbrmaladie;
-    int next;
-   
-}BlocData;
-
-typedef struct {
+    int typedebloc;
     union {
-        BlocMetadonnees metadataTable;
-        BlocData fileData;
-        BlocAllocation allocation;
+        struct {
+            int nbrbloc;
+            int nbrblocutil;
+            TableLocation tablelocation[20];
+        } allocation;
+        struct {
+            int nbrMetadonnees;
+            int next;
+            fichiermetadonnes T[20];
+        } metadataTable;
     } content;
-    int typedebloc; // 1 = metadata, 2 = file data, 3 = allocation
 } Bloc;
 
+// Implémentation fictive pour la vérification
+bool verifierEspaceSuffisant(FILE* disque, int taille) {
+    return true;
+}
+
+// Fonction pour mettre à jour la table d'allocation
 void metajourtableallocation(FILE* disque, int blocIndex, int etat) {
+    printf("Mise à jour de l'entrée de la table d'allocation pour le blocIndex %d avec l'état %d.\n", blocIndex, etat);
     Bloc buffer;
+    buffer.typedebloc = 3;
+
     fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
     fread(&buffer, sizeof(Bloc), 1, disque);
 
-    if (buffer.typedebloc != 3) {
-        printf("Erreur : Le premier bloc n'est pas un bloc d'allocation.\n");
-        return;
-    }
-
-    // Update the allocation table entry for the specified blocIndex
     buffer.content.allocation.tablelocation[blocIndex].etat = etat;
 
-    // Write the updated allocation table back to the first block
     fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
-    fwrite(&buffer, sizeof(Bloc), 1, disque);
+    if (fwrite(&buffer, sizeof(Bloc), 1, disque) == 1) {
+        printf("Table d'allocation mise à jour avec succès pour le blocIndex %d.\n", blocIndex);
+    } else {
+        printf("Erreur : Échec d'écriture dans le bloc 0.\n");
+    }
 }
 
-void CreeTableAllocation( FILE* disque) {
+// Fonction pour créer la table d'allocation
+void CreeTableAllocation(FILE* disque) {
+    printf("Création de la table d'allocation.\n");
     Bloc buffer;
-    buffer.typedebloc=3;
+    rewind(disque);
+
     fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
     fread(&buffer, sizeof(Bloc), 1, disque);
 
-    // Write the initial allocation table in MC
-    for (int i = 0; i < buffer.content.allocation.ms.nbrbloc; i++) {
+    buffer.typedebloc = 3;
+    buffer.content.allocation.nbrbloc = 20;
+    buffer.content.allocation.nbrblocutil = 3;
+
+    for (int i = 0; i < 20; i++) {
         buffer.content.allocation.tablelocation[i].adrdebloc = i;
-        buffer.content.allocation.tablelocation[i].etat = 0;
+        buffer.content.allocation.tablelocation[i].etat = (i < 3) ? 1 : 0;
+        printf("Entrée de la table d'allocation %d initialisée avec l'état %d.\n", i, buffer.content.allocation.tablelocation[i].etat);
     }
 
-    // Write the initial allocation table to the first block
-     fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
-    fwrite(&buffer, sizeof(Bloc), 1, disque);
-
-    // Mark the first block as allocated
-    metajourtableallocation(disque, 0, 1);
+    fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
+    if (fwrite(&buffer, sizeof(Bloc), 1, disque) == 1) {
+        printf("Table d'allocation créée avec succès.\n");
+    } else {
+        printf("Erreur : Échec d'écriture dans le bloc 0.\n");
+    }
 }
 
+// Fonction pour vider l'espace mémoire
 void ViderMs(FILE* disque) {
-    Bloc buffer;
-    buffer.typedebloc=3;
-      fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
-      fread(&buffer, sizeof(Bloc), 1, disque);
+    printf("Vidage de l'espace mémoire.\n");
+    Bloc buffer = {0}; // Initialiser un bloc vide (toutes valeurs à 0/null)
+    int nombreBlocs = 20; // Supposons 20 blocs pour simplifier
 
-    buffer.content.allocation.ms.nbrblocutil = 1; // nombre de bloc utilise
-   // Write the initial allocation table in MC
-    for (int i = 0; i < buffer.content.allocation.ms.nbrbloc; i++) {
-        buffer.content.allocation.tablelocation[i].adrdebloc = i;
-        buffer.content.allocation.tablelocation[i].etat = 0;
+    for (int i = 0; i < nombreBlocs; i++) {
+        fseek(disque, i * sizeof(Bloc), SEEK_SET);
+        if (fwrite(&buffer, sizeof(Bloc), 1, disque) != 1) {
+            printf("Erreur : Impossible de réinitialiser le bloc %d.\n", i);
+            return;
+        }
+        printf("Bloc %d réinitialisé à NULL.\n", i);
     }
 
-    // Write the initial allocation table to the first block
-     fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
-    fwrite(&buffer, sizeof(Bloc), 1, disque);
-
-    // Mark the first block as allocated
-    metajourtableallocation(disque, 0, 1);
+    printf("Tous les blocs ont été réinitialisés à NULL.\n");
 }
 
-void InitMs( FILE* disque) {
-    Bloc buffer;
-    buffer.typedebloc=3;
-     fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
-      fread(&buffer, sizeof(Bloc), 1, disque);
+// Fonction pour initialiser l'espace mémoire
+void InitMs(FILE* disque, int nombreBlocs) {
+    printf("Initialisation de l'espace mémoire avec %d blocs.\n", nombreBlocs);
+    Bloc buffer = {0};
 
-    buffer.content.allocation.ms.nbrbloc = 20;
-    buffer.content.allocation.ms.FB = 30; // Nombre maximum d'enregistrements dans un bloc c'est le facteur du blocage
-    buffer.content.allocation.ms.nbrblocutil = 1;
-    CreeTableAllocation( disque);
-    // Write the initial allocation table to the first block
-     fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
-    fwrite(&buffer, sizeof(Bloc), 1, disque);
+    // Initialiser le bloc 0 (table d'allocation)
+    buffer.typedebloc = 3;
+    CreeTableAllocation(disque);
 
+    // Initialiser les blocs 1 et 2 (métadonnées)
+    buffer.typedebloc = 1;
+    buffer.content.metadataTable.nbrMetadonnees = 0;
+    buffer.content.metadataTable.next = 2;
+    fseek(disque, 1 * sizeof(Bloc), SEEK_SET);
+    if (fwrite(&buffer, sizeof(Bloc), 1, disque) != 1) {
+        printf("Erreur : Échec d'écriture dans le bloc %d.\n", 1);
+        return;
+    } else {
+        printf("Bloc de métadonnées %d initialisé avec succès.\n", 1);
+    }
+
+    buffer.content.metadataTable.next = -1;
+    fseek(disque, 2 * sizeof(Bloc), SEEK_SET);
+    if (fwrite(&buffer, sizeof(Bloc), 1, disque) != 1) {
+        printf("Erreur : Échec d'écriture dans le bloc %d.\n", 2);
+        return;
+    } else {
+        printf("Bloc de métadonnées %d initialisé avec succès.\n", 2);
+    }
 }
 
-// Main function for testing
 int main() {
-    MS ms;
-    FILE *disque = fopen("filedisque.bin", "wb+");
+    printf("Ouverture du fichier disque.\n");
+    FILE *disque = fopen("disque.dat", "rb+");
     if (disque == NULL) {
-        perror("Failed to open file");
-        return EXIT_FAILURE;
+        disque = fopen("disque.dat", "wb+"); // Créer le fichier s'il n'existe pas
+        if (disque == NULL) {
+            printf("Erreur : Impossible de créer le fichier disque.\n");
+            return 1;
+        }
+        printf("Fichier disque créé avec succès.\n");
+    } else {
+        printf("Fichier disque ouvert avec succès.\n");
     }
 
-    InitMs( disque);
-    printf("Initialisation de MS et création de la table d'allocation.\n");
+    // Initialiser l'espace mémoire
+    InitMs(disque, 20);
 
+    // Exemple de mise à jour de l'entrée de la table d'allocation
+    metajourtableallocation(disque, 4, 1);
+
+    // Exemple de vidage de l'espace mémoire
     ViderMs(disque);
-    printf("MS vidé.\n");
-
-    // Test updating the allocation table
-    metajourtableallocation(disque, 5, 1); // Mark bloc 5 as used
-    printf("Bloc 5 marqué comme utilisé.\n");
 
     fclose(disque);
+    printf("Fichier disque fermé.\n");
     return 0;
 }
-
-
