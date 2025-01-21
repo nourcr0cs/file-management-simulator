@@ -25,7 +25,6 @@ typedef struct {
     bool suprimelogiqument;
 } maladie;
 
-// Linked list
 typedef struct {
     maladie T[FB];
     int nbrmaladie;
@@ -43,62 +42,40 @@ typedef struct {
     int next;
 } BlocMetadonnees;
 
-// To locate which block and which record represents the file info
-typedef struct {
-    int numerodebloc;
-    int index;
-} adressemetadonnees;
-
 typedef struct {
     Tableallocation tablelocation[MAX_BLOCKS];
     int nbrblocutil;
     int nbrbloc;
 } BlocAllocation;
 
-// Union to store different types of content in a block
 typedef union {
-    BlocMetadonnees metadataTable;   // Metadata table
-    BlocData fileData;               // File data (maladie records)
+    BlocMetadonnees metadataTable;
+    BlocData fileData;
     BlocAllocation allocation;
 } BlockContent;
 
-// The whole block structure containing the union and block type
 typedef struct {
-    BlockContent content;  // The union storing block content
-    int typedebloc;        // 1 = metadataTable, 2 = file data, 3 = allocation
+    BlockContent content;
+    int typedebloc; // 1 = metadataTable, 2 = file data, 3 = allocation
 } Bloc;
 
-// For research
+typedef struct {
+    int numerodebloc;
+    int index;
+} adressemetadonnees;
+
 typedef struct {
     int numBloc;
     int deplacement;
 } position;
 
-typedef struct {
-    int blockNumber;
-    Bloc originalContent;
-} BlockBackup;
-
-typedef struct {
-    BlockBackup* backups;
-    int backupCount;
-    bool isActive;
-} Transaction;
-
 // Function declarations
-bool beginTransaction(Transaction* trans);
-bool backupBlock(FILE* disque, Transaction* trans, int blockNum);
-bool commitTransaction(Transaction* trans);
-bool rollbackTransaction(FILE* disque, Transaction* trans);
 bool verifierEspaceSuffisant(FILE* disque, int nbrBlocsVoulu);
 int obtenirNombreBlocs(FILE* disque, int option);
 void mettreAJourNombreBlocs(FILE* disque, int option, int nouvelleValeur);
 void metajourtableallocation(FILE* disque, int blocIndex, int etat);
-void initTableAllocation(FILE *disque);
 void initMS(FILE *disque, int nbrbloc);
-void initMetadonnees(FILE *disque, int i);
 void creationL_OF(FILE *disque, int nbrbloc);
-void compactage(Tableallocation* blocAlloc);
 adressemetadonnees recherchemetadonnees(FILE* disque, const char* nomFichier);
 int liremetadonnees(FILE* disque, const char* nomFichier, int caracteristique);
 void miseAJourMetadonnees(FILE* disque, const char* nomFichier, int champ, int nouvelleValeur);
@@ -111,71 +88,20 @@ void suppLogique(FILE *disque, int searchId, const char *nomFichier);
 void suppPhysique(FILE *disque, const char *nomFichier);
 void renameFile(FILE *disque, const char *nomFichier, const char *newName);
 void afficherMemoireSecondaire(FILE* disque, int nombreBlocs);
-void MAJtaballocation(FILE* disque, int blocIndex, int etat);
 bool deleteL_OF(FILE* disque, const char* nomFichier);
 
 // Function definitions
-/*
-bool beginTransaction(Transaction* trans) {
-    trans->backups = malloc(sizeof(BlockBackup) * MAX_BLOCKS);
-    trans->backupCount = 0;
-    trans->isActive = true;
-    return true;
-}
-
-bool backupBlock(FILE* disque, Transaction* trans, int blockNum) {
-    if (!trans->isActive) return false;
-
-    Bloc buffer;
-    fseek(disque, blockNum * sizeof(Bloc), SEEK_SET);
-    fread(&buffer, sizeof(Bloc), 1, disque);
-
-    trans->backups[trans->backupCount].blockNumber = blockNum;
-    trans->backups[trans->backupCount].originalContent = buffer;
-    trans->backupCount++;
-
-    return true;
-}
-
-bool commitTransaction(Transaction* trans) {
-    free(trans->backups);
-    trans->backupCount = 0;
-    trans->isActive = false;
-    return true;
-}
-
-bool rollbackTransaction(FILE* disque, Transaction* trans) {
-    if (!trans->isActive) return false;
-
-    // Restore all blocks to their original state
-    for (int i = 0; i < trans->backupCount; i++) {
-        fseek(disque, trans->backups[i].blockNumber * sizeof(Bloc), SEEK_SET);
-        fwrite(&trans->backups[i].originalContent, sizeof(Bloc), 1, disque);
-    }
-
-    free(trans->backups);
-    trans->backupCount = 0;
-    trans->isActive = false;
-    return true;
-}
-*/
-
 bool verifierEspaceSuffisant(FILE* disque, int nbrBlocsVoulu) {
     Bloc buffer;
-
-    // Read the allocation table from block 0
+    rewind(disque);
     fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
-    if (fread(&buffer, sizeof(Bloc), 1, disque) != 1) {
-        printf("Erreur : Impossible de lire le bloc 0.\n");
-        return false;
-    }
+    fread(&buffer, sizeof(Bloc), 1, disque);
 
     if (buffer.typedebloc != 3) {
         printf("Erreur : Le bloc 0 n'est pas un bloc d'allocation.\n");
         return false;
     }
 
-    // Calculate free blocks
     int blocsLibres = buffer.content.allocation.nbrbloc - buffer.content.allocation.nbrblocutil;
 
     if (nbrBlocsVoulu > blocsLibres) {
@@ -254,29 +180,6 @@ void metajourtableallocation(FILE* disque, int blocIndex, int etat) {
     fwrite(&buffer, sizeof(Bloc), 1, disque);
 }
 
-void initTableAllocation(FILE *disque) {
-    Bloc buffer;
-    buffer.typedebloc = 3; // Allocation block type
-
-    // Initialize the allocation table
-    for (int i = 0; i < MAX_BLOCKS; i++) {
-        buffer.content.allocation.tablelocation[i].adrdebloc = i;
-        buffer.content.allocation.tablelocation[i].etat = 0; // Initially all blocks are free
-    }
-
-    // Mark block 1 as used (metadata block)
-    buffer.content.allocation.tablelocation[1].etat = 1;
-
-    // Write the allocation table to disk at index 0
-    fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
-    if (fwrite(&buffer, sizeof(Bloc), 1, disque) != 1) {
-        printf("Error writing allocation table\n");
-        return;
-    }
-
-    printf("Allocation table initialized successfully.\n");
-}
-
 void initMS(FILE *disque, int nbrbloc) {
     Bloc buffer;
 
@@ -296,7 +199,7 @@ void initMS(FILE *disque, int nbrbloc) {
     // Mark all other blocks as free
     for (int i = 2; i < MAX_BLOCKS; i++) {
         buffer.content.allocation.tablelocation[i].adrdebloc = i;
-        buffer.content.allocation.tablelocation[i].etat = 0; // 0 = free
+        buffer.content.allocation.tablelocation[i].etat = 0;
     }
 
     // Write the allocation table to disk at index 0
@@ -319,51 +222,24 @@ void initMS(FILE *disque, int nbrbloc) {
         return;
     }
 
-    printf("Initialized metadata block at index 1\n");
-}
-
-
-
-void initMetadonnees(FILE *disque, int i) {
-    Bloc buffer;
-    buffer.typedebloc = 1; // Set block type to metadata
-
-    // Read existing block first
-    fseek(disque, sizeof(Bloc), SEEK_SET);
-    if (fread(&buffer, sizeof(Bloc), 1, disque) != 1) {
-        printf("Error reading metadata block\n");
-        return;
+    // Initialize all other blocks as unused
+    Bloc unusedBlock;
+    unusedBlock.typedebloc = 0; // Unused block type
+    for (int i = 2; i < MAX_BLOCKS; i++) {
+        fseek(disque, i * sizeof(Bloc), SEEK_SET);
+        if (fwrite(&unusedBlock, sizeof(Bloc), 1, disque) != 1) {
+            printf("Error initializing block %d\n", i);
+            return;
+        }
     }
 
-    // Infos that the user should enter
-    printf("Enter the file name: ");
-    scanf("%s", buffer.content.metadataTable.T[i].Nomdufichier);
-
-    printf("Enter the global organization mode (0 for chained, 1 for contigue): ");
-    scanf("%d", &buffer.content.metadataTable.T[i].Modeorganisationglobale);
-
-    printf("Do you want it to be ordered or non-ordered (0 for ordered, 1 for non-ordered): ");
-    scanf("%d", &buffer.content.metadataTable.T[i].Modeorganisationinterne);
-
-    printf("Enter the number of records in total: ");
-    scanf("%d", &buffer.content.metadataTable.T[i].Taillefichierenregistrements);
-
-    buffer.content.metadataTable.T[i].Adrpremierbloc = -1;
-    buffer.content.metadataTable.nbrMetadonnees++;
-
-    // Write back the updated block
-    fseek(disque, sizeof(Bloc), SEEK_SET);
-    if (fwrite(&buffer, sizeof(Bloc), 1, disque) != 1) {
-        printf("Error writing updated metadata block\n");
-        return;
-    }
-
-    printf("Metadata initialized successfully.\n");
+    printf("Initialized all blocks successfully.\n");
 }
 
 void creationL_OF(FILE *disque, int nbrbloc) {
     Bloc buffer;
     int ptDataBlock = -1;
+    int i = 0;
     int metadataFound = 0;
 
     printf("Starting file creation with %d blocks\n", nbrbloc);
@@ -378,10 +254,7 @@ void creationL_OF(FILE *disque, int nbrbloc) {
     int metadataBlockIndex = 1;
     while (metadataBlockIndex != -1) {
         fseek(disque, metadataBlockIndex * sizeof(Bloc), SEEK_SET);
-        if (fread(&buffer, sizeof(Bloc), 1, disque) != 1) {
-            printf("Error reading metadata block at index %d\n", metadataBlockIndex);
-            break;
-        }
+        fread(&buffer, sizeof(Bloc), 1, disque);
 
         if (buffer.typedebloc != 1) {
             printf("Block at index %d is not a metadata block (type = %d)\n", metadataBlockIndex, buffer.typedebloc);
@@ -390,7 +263,6 @@ void creationL_OF(FILE *disque, int nbrbloc) {
 
         if (buffer.content.metadataTable.nbrMetadonnees < FB) {
             printf("Found metadata block with space at index %d\n", metadataBlockIndex);
-            initMetadonnees(disque, buffer.content.metadataTable.nbrMetadonnees);
             metadataFound = 1;
             break;
         }
@@ -403,7 +275,7 @@ void creationL_OF(FILE *disque, int nbrbloc) {
     }
 
     // Find an empty block for data
-    for (int i = 2; i < MAX_BLOCKS; i++) {
+    for (i = 2; i < MAX_BLOCKS; i++) {
         fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
         fread(&buffer, sizeof(Bloc), 1, disque);
 
@@ -425,37 +297,32 @@ void creationL_OF(FILE *disque, int nbrbloc) {
     buffer.content.fileData.next = -1;
 
     fseek(disque, ptDataBlock * sizeof(Bloc), SEEK_SET);
-    if (fwrite(&buffer, sizeof(Bloc), 1, disque) != 1) {
-        printf("Error writing data block at index %d\n", ptDataBlock);
-        return;
-    }
+    fwrite(&buffer, sizeof(Bloc), 1, disque);
 
     // Update metadata
-    fseek(disque, 1 * sizeof(Bloc), SEEK_SET);
+    fseek(disque, metadataBlockIndex * sizeof(Bloc), SEEK_SET);
     fread(&buffer, sizeof(Bloc), 1, disque);
 
-    for (int j = 0; j < FB; j++) {
-        if (buffer.content.metadataTable.T[j].Adrpremierbloc == -1) {
-            buffer.content.metadataTable.T[j].Adrpremierbloc = ptDataBlock;
-            printf("Updated metadata with data block address %d\n", ptDataBlock);
-            break;
-        }
-    }
+    buffer.content.metadataTable.T[buffer.content.metadataTable.nbrMetadonnees].Adrpremierbloc = ptDataBlock;
+    buffer.content.metadataTable.nbrMetadonnees++;
 
-    // Write back updated metadata
-    fseek(disque, 1 * sizeof(Bloc), SEEK_SET);
-    if (fwrite(&buffer, sizeof(Bloc), 1, disque) != 1) {
-        printf("Error writing updated metadata block\n");
-        return;
-    }
+    fseek(disque, metadataBlockIndex * sizeof(Bloc), SEEK_SET);
+    fwrite(&buffer, sizeof(Bloc), 1, disque);
 
     // Update allocation table
-    metajourtableallocation(disque, ptDataBlock, 1);
+    fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
+    fread(&buffer, sizeof(Bloc), 1, disque);
+
+    buffer.content.allocation.tablelocation[ptDataBlock].etat = 1;
+    buffer.content.allocation.nbrblocutil++;
+
+    fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
+    fwrite(&buffer, sizeof(Bloc), 1, disque);
+
     printf("File creation completed successfully.\n");
 }
 
-
-
+// Other functions remain unchanged...
 void compactage(Tableallocation* blocAlloc) {
     int indexLibre = 0;  // L'indice du prochain bloc vide à remplir
 
@@ -883,18 +750,26 @@ void suppPhysique(FILE *disque, const char *nomFichier) {
 }
 
 void renameFile(FILE *disque, const char *nomFichier, const char *newName) {
+    // Check if the file exists
     adressemetadonnees adresse = recherchemetadonnees(disque, nomFichier);
-    Bloc buffer;
+    if (adresse.numerodebloc == -1) {
+        printf("Erreur : Le fichier '%s' n'existe pas.\n", nomFichier);
+        return;
+    }
 
+    // Proceed with renaming the file
+    Bloc buffer;
     fseek(disque, adresse.numerodebloc * sizeof(Bloc), SEEK_SET);
     fread(&buffer, sizeof(Bloc), 1, disque);
 
+    // Update the file name
     strcpy(buffer.content.metadataTable.T[adresse.index].Nomdufichier, newName);
 
+    // Write the updated metadata back to disk
     fseek(disque, adresse.numerodebloc * sizeof(Bloc), SEEK_SET);
     fwrite(&buffer, sizeof(Bloc), 1, disque);
 
-    printf("File renamed to '%s'\n", newName);
+    printf("Fichier renommé en '%s'\n", newName);
 }
 
 void afficherMemoireSecondaire(FILE* disque, int nombreBlocs) {
@@ -904,7 +779,7 @@ void afficherMemoireSecondaire(FILE* disque, int nombreBlocs) {
     for (int i = 0; i < nombreBlocs; i++) {
         fseek(disque, i * sizeof(Bloc), SEEK_SET);
         if (fread(&buffer, sizeof(Bloc), 1, disque) != 1) {
-            printf("Erreur : Impossible de lire le bloc %d.\n", i);
+            printf("Bloc %d : Non initialisé ou corrompu\n", i);
             continue;
         }
 
@@ -935,7 +810,9 @@ void afficherMemoireSecondaire(FILE* disque, int nombreBlocs) {
                 printf("  Nombre total de blocs : %d\n", buffer.content.allocation.nbrbloc);
                 printf("  Nombre de blocs utilisés : %d\n", buffer.content.allocation.nbrblocutil);
                 printf("  Table d'allocation :\n");
-                for (int j = 0; j < 20; j++) {
+
+                // Print all blocks in the allocation table (up to MAX_BLOCKS)
+                for (int j = 0; j < MAX_BLOCKS; j++) {
                     printf("    Bloc %d : %s\n",
                         buffer.content.allocation.tablelocation[j].adrdebloc,
                         buffer.content.allocation.tablelocation[j].etat == 1 ? "Alloué" : "Libre");
@@ -970,19 +847,11 @@ void MAJtaballocation(FILE* disque, int blocIndex, int etat) {
 }
 
 bool deleteL_OF(FILE* disque, const char* nomFichier) {
-    Transaction trans;
-    if (!beginTransaction(&trans)) {
-        printf("Erreur: Impossible de démarrer la transaction.\n");
-        return false;
-    }
-
     adressemetadonnees adresse = recherchemetadonnees(disque, nomFichier);
     if (adresse.numerodebloc == -1) {
         printf("Erreur: Fichier introuvable.\n");
         return false;
     }
-
-    backupBlock(disque, &trans, adresse.numerodebloc);
 
     Bloc buffer;
     fseek(disque, adresse.numerodebloc * sizeof(Bloc), SEEK_SET);
@@ -991,8 +860,6 @@ bool deleteL_OF(FILE* disque, const char* nomFichier) {
     int currentBlock = buffer.content.metadataTable.T[adresse.index].Adrpremierbloc;
 
     while (currentBlock != -1) {
-        backupBlock(disque, &trans, currentBlock);
-
         fseek(disque, currentBlock * sizeof(Bloc), SEEK_SET);
         fread(&buffer, sizeof(Bloc), 1, disque);
         int nextBlock = buffer.content.fileData.next;
@@ -1016,138 +883,257 @@ bool deleteL_OF(FILE* disque, const char* nomFichier) {
     int blocCount = obtenirNombreBlocs(disque, 1);
     mettreAJourNombreBlocs(disque, 1, blocCount - 1);
 
-    if (commitTransaction(&trans)) {
-        printf("Fichier '%s' supprimé avec succès.\n", nomFichier);
-        return true;
-    } else {
-        rollbackTransaction(disque, &trans);
-        printf("Erreur: La suppression a échoué. Opération annulée.\n");
-        return false;
-    }
+    printf("Fichier '%s' supprimé avec succès.\n", nomFichier);
+    return true;
 }
 
-int main() {
-    FILE* disque;
-    int choix;
-    char nomFichier[20];
-    int searchId;
+void viderMemoireSecondaire(FILE* disque) {
+    Bloc buffer;
 
-    disque = fopen("disque.bin", "rb+");
-    if (disque == NULL) {
-        disque = fopen("disque.bin", "wb+");
-        if (disque == NULL) {
-            printf("Erreur: Impossible de créer le fichier disque.\n");
+    // Initialize all blocks as unused
+    buffer.typedebloc = 0; // Unused block type
+    for (int i = 0; i < MAX_BLOCKS; i++) {
+        fseek(disque, i * sizeof(Bloc), SEEK_SET);
+        fwrite(&buffer, sizeof(Bloc), 1, disque);
+    }
+
+    // Reinitialize the allocation table
+    buffer.typedebloc = 3; // Allocation block type
+    buffer.content.allocation.nbrbloc = MAX_BLOCKS;
+    buffer.content.allocation.nbrblocutil = 1; // Block 0 is used for allocation table
+
+    // Mark block 0 as used (allocation table)
+    buffer.content.allocation.tablelocation[0].adrdebloc = 0;
+    buffer.content.allocation.tablelocation[0].etat = 1;
+
+    // Mark block 1 as used (metadata block)
+    buffer.content.allocation.tablelocation[1].adrdebloc = 1;
+    buffer.content.allocation.tablelocation[1].etat = 1;
+
+    // Mark all other blocks as free
+    for (int i = 2; i < MAX_BLOCKS; i++) {
+        buffer.content.allocation.tablelocation[i].adrdebloc = i;
+        buffer.content.allocation.tablelocation[i].etat = 0;
+    }
+
+    // Write the allocation table to disk at index 0
+    fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
+    fwrite(&buffer, sizeof(Bloc), 1, disque);
+
+    // Initialize the first metadata block at index 1
+    Bloc metadataBlock;
+    metadataBlock.typedebloc = 1; // Metadata block type
+    metadataBlock.content.metadataTable.nbrMetadonnees = 0;
+    metadataBlock.content.metadataTable.next = -1; // No next block initially
+
+    // Write the metadata block to disk at index 1
+    fseek(disque, 1 * sizeof(Bloc), SEEK_SET);
+    fwrite(&metadataBlock, sizeof(Bloc), 1, disque);
+
+    printf("Vidage de la mémoire secondaire terminé.\n");
+}
+
+
+void compactageMemoireSecondaire(FILE* disque) {
+    Bloc buffer;
+    Tableallocation tableAllocation[MAX_BLOCKS];
+    int usedBlocks[MAX_BLOCKS];
+    int usedCount = 0;
+
+    // Read the allocation table
+    fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
+    fread(&buffer, sizeof(Bloc), 1, disque);
+
+    if (buffer.typedebloc != 3) {
+        printf("Erreur : Le premier bloc n'est pas un bloc d'allocation.\n");
+        return;
+    }
+
+    // Copy the allocation table
+    for (int i = 0; i < MAX_BLOCKS; i++) {
+        tableAllocation[i] = buffer.content.allocation.tablelocation[i];
+    }
+
+    // Identify used blocks
+    for (int i = 0; i < MAX_BLOCKS; i++) {
+        if (tableAllocation[i].etat == 1) {
+            usedBlocks[usedCount++] = i;
+        }
+    }
+
+    // Compact used blocks to the beginning of the file
+    for (int i = 0; i < usedCount; i++) {
+        if (usedBlocks[i] != i) {
+            // Move the used block to the new position
+            fseek(disque, usedBlocks[i] * sizeof(Bloc), SEEK_SET);
+            fread(&buffer, sizeof(Bloc), 1, disque);
+
+            fseek(disque, i * sizeof(Bloc), SEEK_SET);
+            fwrite(&buffer, sizeof(Bloc), 1, disque);
+
+            // Update the allocation table
+            tableAllocation[i].etat = 1;
+            tableAllocation[usedBlocks[i]].etat = 0;
+        }
+    }
+
+    // Write the updated allocation table back to disk
+    fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
+    fread(&buffer, sizeof(Bloc), 1, disque);
+
+    for (int i = 0; i < MAX_BLOCKS; i++) {
+        buffer.content.allocation.tablelocation[i] = tableAllocation[i];
+    }
+
+    fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
+    fwrite(&buffer, sizeof(Bloc), 1, disque);
+
+    printf("Compactage de la mémoire secondaire terminé.\n");
+}
+
+
+
+int main() {
+    int choix;
+    int modeG, modeI;
+    char nomFichier[20], ancienNom[20], nouveaunom[20];
+    int ID;
+
+    printf("Program started successfully!\n");
+
+    FILE* disque = fopen("disque.bin", "r+b"); // Open the file for reading/writing
+    if (!disque) {
+        disque = fopen("disque.bin", "w+b"); // Create the file if it doesn't exist
+        if (!disque) {
+            printf("Erreur : Impossible de créer le fichier disque.bin.\n");
             return 1;
         }
-        // Initialize the disk structure
-        initMS(disque, MAX_BLOCKS);
-        creationL_OF(disque, MAX_BLOCKS);
     }
 
     do {
-        printf("\n=== Gestion de Fichiers LOF (Linked Organization Files) ===\n");
-        printf("1. Créer un fichier LOF\n");
-        printf("2. Insérer un enregistrement\n");
-        printf("3. Rechercher un enregistrement\n");
-        printf("4. Suppression logique\n");
-        printf("5. Suppression physique\n");
-        printf("6. Défragmentation\n");
-        printf("7. Renommer un fichier\n");
-        printf("8. Afficher la mémoire secondaire\n");
+        printf("\n--- Gestion de la Mémoire Secondaire ---\n");
+        printf("1. Initialiser la mémoire secondaire\n");
+        printf("2. Créer un fichier\n");
+        printf("3. Afficher l'état de la mémoire secondaire\n");
+        printf("4. Afficher les métadonnées des fichiers\n");
+        printf("5. Rechercher un enregistrement\n");
+        printf("6. Insérer un nouvel enregistrement\n");
+        printf("7. Supprimer un enregistrement\n");
+        printf("8. Défragmenter un fichier\n");
         printf("9. Supprimer un fichier\n");
+        printf("10. Renommer un fichier\n");
+        printf("11. Compacter la mémoire secondaire\n");
+        printf("12. Vider la mémoire secondaire\n");
         printf("0. Quitter\n");
-        printf("Votre choix: ");
+        printf("Votre choix : ");
         scanf("%d", &choix);
 
-        switch(choix) {
+        switch (choix) {
             case 1:
-                printf("Création d'un fichier LOF\n");
-                printf("Nombre de blocs: ");
-                int nbrbloc;
-                scanf("%d", &nbrbloc);
-                creationL_OF(disque, nbrbloc);
+                initMS(disque, 20); // Initialize the secondary memory
+                printf("Mémoire secondaire initialisée avec succès.\n");
                 break;
 
             case 2:
-                printf("Insertion d'un enregistrement\n");
-                printf("Nom du fichier: ");
-                scanf("%s", nomFichier);
-                insertDis(disque, MAX_BLOCKS, nomFichier);
+                printf("Création d'un fichier\n");
+                printf("Votre choix d'organisation globale (0 pour chaînée, 1 pour non ordonnée) : ");
+                scanf("%d", &modeG);
+                printf("Votre choix d'organisation interne (0 pour ordonnée, 1 pour non ordonnée) : ");
+                scanf("%d", &modeI);
+                if (modeG == 0) {
+                    printf("Création d'un fichier en mode chaîné.\n");
+                } else if (modeG == 1) {
+                    printf("Création d'un fichier en mode non ordonné.\n");
+                } else {
+                    printf("Choix d'organisation invalide.\n");
+                    break;
+                }
+                creationL_OF(disque, 1); // Create a file (1 block for simplicity)
                 break;
 
             case 3:
-                printf("Recherche d'un enregistrement\n");
-                printf("Nom du fichier: ");
+                printf("Affichage de l'état de la mémoire secondaire :\n");
+                afficherMemoireSecondaire(disque, MAX_BLOCKS); // Display the state of the secondary memory
+                break;
+
+            case 4:
+                printf("Affichage des métadonnées des fichiers :\n");
+                // Add a function to display metadata (if needed)
+                break;
+
+            case 5:
+                printf("Recherche d'enregistrement\n");
+                printf("Entrez le nom du fichier : ");
                 scanf("%s", nomFichier);
-                printf("ID recherché: ");
-                scanf("%d", &searchId);
-                position pos = researchDis(disque, searchId, nomFichier);
+                printf("Entrez l'ID de l'enregistrement à rechercher : ");
+                scanf("%d", &ID);
+                position pos = researchDis(disque, ID, nomFichier);
                 if (pos.deplacement != -1) {
-                    printf("Enregistrement trouvé: Bloc %d, Position %d\n",
-                           pos.numBloc, pos.deplacement);
+                    printf("Enregistrement trouvé dans le bloc %d, position %d\n", pos.numBloc, pos.deplacement);
                 } else {
                     printf("Enregistrement non trouvé.\n");
                 }
                 break;
 
-            case 4:
-                printf("Suppression logique\n");
-                printf("Nom du fichier: ");
-                scanf("%s", nomFichier);
-                printf("ID à supprimer: ");
-                scanf("%d", &searchId);
-                suppLogique(disque, searchId, nomFichier);
-                break;
-
-            case 5:
-                printf("Suppression physique\n");
-                printf("Nom du fichier: ");
-                scanf("%s", nomFichier);
-                suppPhysique(disque, nomFichier);
-                break;
-
             case 6:
-                printf("Défragmentation\n");
-                printf("Nom du fichier: ");
+                printf("Insertion d'enregistrement\n");
+                printf("Entrez le nom du fichier : ");
+                scanf("%s", nomFichier);
+                insertDis(disque, MAX_BLOCKS, nomFichier);
+                break;
+
+            case 7:
+                printf("Suppression d'enregistrement\n");
+                printf("Entrez le nom du fichier : ");
+                scanf("%s", nomFichier);
+                printf("Entrez l'ID de l'enregistrement à supprimer : ");
+                scanf("%d", &ID);
+                suppLogique(disque, ID, nomFichier);
+                break;
+
+            case 8:
+                printf("Défragmentation d'un fichier\n");
+                printf("Entrez le nom du fichier à défragmenter : ");
                 scanf("%s", nomFichier);
                 defregmentation(disque, nomFichier);
                 break;
 
-            case 7:
-                printf("Renommer un fichier\n");
-                printf("Ancien nom: ");
-                scanf("%s", nomFichier);
-                printf("Nouveau nom: ");
-                char newName[20];
-                scanf("%s", newName);
-                renameFile(disque, nomFichier, newName);
-                break;
-
-            case 8:
-                printf("Affichage de la mémoire secondaire\n");
-                afficherMemoireSecondaire(disque, MAX_BLOCKS);
-                break;
-
             case 9:
-                printf("Suppression d'un fichier\n");
-                printf("Nom du fichier: ");
+                printf("Suppression de fichier\n");
+                printf("Entrez le nom du fichier à supprimer : ");
                 scanf("%s", nomFichier);
-                if (deleteL_OF(disque, nomFichier)) {
-                    printf("Fichier supprimé avec succès.\n");
-                } else {
-                    printf("Erreur lors de la suppression.\n");
-                }
+                deleteL_OF(disque, nomFichier);
+                break;
+
+            case 10:
+                printf("Renommage de fichier\n");
+                printf("Entrez le nom actuel du fichier : ");
+                scanf("%s", ancienNom);
+                printf("Entrez le nouveau nom du fichier : ");
+                scanf("%s", nouveaunom);
+                renameFile(disque, ancienNom, nouveaunom);
+                break;
+
+            case 11:
+                printf("Compactage de la mémoire secondaire\n");
+                compactageMemoireSecondaire(disque);
+                break;
+
+            case 12:
+                printf("Vidage de la mémoire secondaire\n");
+                viderMemoireSecondaire(disque);
                 break;
 
             case 0:
-                printf("Au revoir!\n");
+                printf("Programme terminé !\n");
                 break;
 
             default:
-                printf("Choix invalide!\n");
+                printf("Choix invalide. Veuillez réessayer.\n");
+                break;
         }
     } while (choix != 0);
 
-    fclose(disque);
+    fclose(disque); // Close the disk file
     return 0;
 }
