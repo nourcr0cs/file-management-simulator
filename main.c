@@ -172,7 +172,7 @@ bool verifierEspaceLibre(BlocAllocation* allocation, int nombreBlocsRequis) {
 
 // Fonction de compactage proposée si l'espace est insuffisant
 void proposerCompactage(Bloc* blocs, int nbrBlocs, BlocAllocation* allocation) {
-    printf("Espace insuffisant. Proposer compactage...\n");
+    printf("Espace insuffisant.  compactage en courants ...\n");
 
     // Appel de la fonction de compactage pour réorganiser les blocs et récupérer de l'espace libre
     compactage(blocs, nbrBlocs, allocation);
