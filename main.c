@@ -65,7 +65,7 @@ typedef struct {
     int typedebloc; // 1 = metadata, 2 = file data, 3 = allocation
 } Bloc;
 //----------------------------------------------------- Définition de la fonction afficherEtatMemoire--------------------------------------------------
-#include <stdio.h>
+
 
 // Fonction pour afficher un bloc avec un cadre
 void afficherAvecCadre(const char* titre, const char* contenu) {
@@ -182,6 +182,7 @@ void afficherEtatFichier(Bloc* blocs, int nbrBlocs, BlocAllocation* allocation) 
 
 
 //------------------------------------------- Fonction de compactage du fichier en réorganisant les blocs.-------------------------------------------------------------------
+
 void compactage(Bloc* blocs, int nbrBlocs, BlocAllocation* allocation) {
     // Parcours des blocs pour déplacer les données
     int i, j;
