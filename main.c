@@ -65,27 +65,119 @@ typedef struct {
     int typedebloc; // 1 = metadata, 2 = file data, 3 = allocation
 } Bloc;
 //----------------------------------------------------- Définition de la fonction afficherEtatMemoire--------------------------------------------------
-void afficherdetaillebloc(BlocAllocation *blocAlloc) {
-    printf("Etat de la mémoire secondaire (avec des boîtes):\n\n");
+#include <stdio.h>
 
-    // Afficher les informations globales
-    printf("Nombre total de blocs: %d\n", blocAlloc->ms.nbrbloc);
-    printf("Nombre de blocs utilisés: %d\n", blocAlloc->ms.nbrblocutil);
-    printf("FB (autre info): %d\n\n", blocAlloc->ms.FB);
-
-    // Affichage des blocs avec des boîtes autour de chaque bloc
-    for (int i = 0; i < 20; i++) {
-        const char* etat = (blocAlloc->tablelocation[i].etat == 0) ? "Vide" : "Plein";
-        
-        int largeur = 20 + 2 + 2 * strlen(etat); // pour l'adresse + état, ajustable selon la taille du texte
-        printf("Bloc %d:\n", i + 1);
-        printf("╔%.*s╗\n", largeur, "====================================="); // ligne du dessus (boîte)
-        printf("║ Adresse: %d %*s║\n", blocAlloc->tablelocation[i].adrdebloc, largeur - 15, " "); // Adresse
-        printf("║ Etat   : %s %*s║\n", etat, largeur - strlen(etat) - 12, " "); // Etat
-        printf("╚%.*s╝\n", largeur, "====================================="); // ligne du dessous (boîte)
-        printf("\n"); // Saut de ligne entre chaque bloc
+// Fonction pour afficher un bloc avec un cadre
+void afficherAvecCadre(const char* titre, const char* contenu) {
+    int largeur = 50;  // Largeur du cadre (en caractères)
+    printf("+");
+    for (int i = 0; i < largeur - 2; i++) {
+        printf("-");  // Afficher les bords du cadre
     }
+    printf("+\n");
+
+    // Afficher le titre du bloc centré
+    printf("| %-*s |\n", largeur - 4, titre);
+
+    // Afficher le contenu du bloc
+    printf("| %-*s |\n", largeur - 4, contenu);
+
+    // Afficher les bords du cadre
+    printf("+");
+    for (int i = 0; i < largeur - 2; i++) {
+        printf("-");  // Afficher les bords du cadre
+    }
+    printf("+\n");
 }
+
+// Fonction pour afficher l'état du fichier .bin avec des cadres
+void afficherEtatFichier(Bloc* blocs, int nbrBlocs, BlocAllocation* allocation) {
+    printf("=== Etat du fichier .bin ===\n");
+    
+    // Affichage de l'état des blocs dans la mémoire secondaire (MS)
+    for (int i = 0; i < nbrBlocs; i++) {
+        // Créer un titre pour chaque bloc
+        char titre[50];
+        sprintf(titre, "Bloc %d", i);
+
+        // Créer un contenu pour chaque bloc en fonction de son type
+        char contenu[500];
+        contenu[0] = '\0';  // Initialiser le contenu
+
+        switch (blocs[i].typedebloc) {
+            case 1:
+                // Bloc de métadonnées
+                strcat(contenu, "Type: Métadonnées\n");
+                BlocMetadonnees* blocMeta = &blocs[i].content.metadataTable;
+                char temp[100];
+                sprintf(temp, "Nombre de métadonnées: %d", blocMeta->nbrMetadonnees);
+                strcat(contenu, temp);
+                strcat(contenu, "\n");
+                for (int j = 0; j < blocMeta->nbrMetadonnees; j++) {
+                    sprintf(temp, "Fichier %d - Nom: %s, Taille: %d, Premier bloc: %d\n",
+                            j, blocMeta->T[j].Nomdufichier, blocMeta->T[j].Taillefichierblocs, blocMeta->T[j].Adrpremierbloc);
+                    strcat(contenu, temp);
+                }
+                break;
+                
+            case 2:
+                // Bloc de données
+                strcat(contenu, "Type: Données\n");
+                BlocData* blocData = &blocs[i].content.fileData;
+                sprintf(temp, "Nombre de maladies: %d", blocData->nbrmaladie);
+                strcat(contenu, temp);
+                strcat(contenu, "\n");
+                for (int j = 0; j < blocData->nbrmaladie; j++) {
+                    sprintf(temp, "Maladie %d - ID: %d, Nom: %s, Age: %d\n", j, blocData->T[j].id, blocData->T[j].name, blocData->T[j].age);
+                    strcat(contenu, temp);
+                }
+                break;
+                
+            case 3:
+                // Bloc d'allocation
+                strcat(contenu, "Type: Allocation\n");
+                Tableallocation* tableAlloc = &blocs[i].content.allocation;
+                for (int j = 0; j < 20; j++) {
+                    sprintf(temp, "Bloc d'allocation %d - Etat: %s\n", j,
+                            tableAlloc->tablelocation[j].etat == 0 ? "Vide" : "Plein");
+                    strcat(contenu, temp);
+                }
+                break;
+                
+            default:
+                strcat(contenu, "Type: Inconnu\n");
+                break;
+        }
+        
+        // Afficher chaque bloc dans un cadre
+        afficherAvecCadre(titre, contenu);
+
+        // Affichage de l'état du bloc dans la table d'allocation (si applicable)
+        if (i < allocation->nbrbloc) {
+            char allocationInfo[100];
+            sprintf(allocationInfo, "Adresse: %d, Etat: %s",
+                    allocation->tablelocation[i].adrdebloc,
+                    allocation->tablelocation[i].etat == 0 ? "Vide" : "Plein");
+            afficherAvecCadre("Etat du bloc dans la table d'allocation", allocationInfo);
+        }
+    }
+
+    // Affichage des blocs utilisés dans la table d'allocation
+    printf("=== Etat de la table d'allocation ===\n");
+    for (int i = 0; i < allocation->nbrbloc; i++) {
+        char allocationInfo[100];
+        sprintf(allocationInfo, "Bloc d'allocation %d - Etat: %s\n", i,
+                allocation->tablelocation[i].etat == 0 ? "Vide" : "Plein");
+        afficherAvecCadre("Etat des blocs d'allocation", allocationInfo);
+    }
+
+    char summary[100];
+    sprintf(summary, "Nombre total de blocs utilisés : %d / %d", allocation->nbrblocutil, allocation->nbrbloc);
+    afficherAvecCadre("Résumé de l'allocation", summary);
+
+    printf("=== Fin de l'état du fichier .bin ===\n");
+}
+
 
 
 
