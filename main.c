@@ -90,40 +90,71 @@ void afficherdetaillebloc(BlocAllocation *blocAlloc) {
 
 
 
-// Fonction de compactage de la mémoire secondaire
-void compactMS(BlocAllocation *blocAlloc) {
-    if (blocAlloc == NULL) {
-        printf("Erreur: Bloc d'allocation NULL.\n");
-        return;
+#include <stdio.h>
+#include <string.h>
+
+//------------------------------------------- Fonction de compactage du fichier en réorganisant les blocs.-------------------------------------------------------------------
+void compactage(Bloc* blocs, int nbrBlocs, BlocAllocation* allocation) {
+    // Parcours des blocs pour déplacer les données
+    int i, j;
+    int blocLibreIndex = -1;
+
+    // Première étape : Réorganiser les blocs de données en éliminant les blocs vides (non utilisés).
+    for (i = 0; i < nbrBlocs; i++) {
+        if (blocs[i].typedebloc == 2 && blocs[i].content.fileData.nbrmaladie > 0) {
+            // Si le bloc est utilisé et contient des données, il doit être compacté
+            if (blocLibreIndex != -1) {
+                // Déplacer les données du bloc actuel vers le bloc libre
+                blocs[blocLibreIndex] = blocs[i];
+                blocs[i].typedebloc = 0;  // Marquer comme vide après déplacement
+                allocation->tablelocation[blocLibreIndex].etat = 1;  // Bloc maintenant plein
+                allocation->tablelocation[i].etat = 0;  // Bloc maintenant vide
+            }
+        } else if (blocs[i].typedebloc == 0) {
+            // Si le bloc est vide, nous le marquons comme disponible
+            blocLibreIndex = i;
+        }
     }
 
-    // Initialisation de l'indice de bloc vide (nextFreeBlock)
-    int nextFreeBlock = 0;  // Indice du prochain bloc vide
-    for (int i = 0; i < 20; i++) {
-        // Si le bloc est vide, déplacer à la fin des blocs vides
-        if (blocAlloc->tablelocation[i].etat == 0) {
-            // Ignorer les blocs vides et passer au suivant
-            continue;
+    // Mise à jour de la table d'allocation : compactage des blocs et gestion des adresses
+    for (i = 0; i < allocation->nbrblocutil; i++) {
+        if (allocation->tablelocation[i].etat == 1) {
+            // Bloc utilisé, vérifier s'il doit être déplacé
+            for (j = 0; j < allocation->nbrbloc; j++) {
+                if (allocation->tablelocation[j].etat == 0) {
+                    // Déplacer le contenu dans un bloc vide si nécessaire
+                    allocation->tablelocation[j] = allocation->tablelocation[i];
+                    allocation->tablelocation[i].etat = 0;
+                    break;
+                }
+            }
         }
-
-        // Si le bloc est plein, déplacer vers la position du prochain bloc vide
-        if (i != nextFreeBlock) {
-            // Déplacer le bloc plein à l'emplacement du bloc vide
-            blocAlloc->tablelocation[nextFreeBlock] = blocAlloc->tablelocation[i];
-            blocAlloc->tablelocation[i].etat = 0;  // Marquer le bloc original comme vide
-        }
-
-        // Mettre à jour l'indice pour le prochain bloc vide
-        nextFreeBlock++;
     }
 
-    // Mettre à jour le nombre de blocs utilisés
-    blocAlloc->ms.nbrblocutil = nextFreeBlock;
-    printf("Compactage terminé. %d blocs utilisés après compactage.\n", blocAlloc->ms.nbrblocutil);
-
-    // Afficher l'état de la mémoire après le compactage
-    afficherEtatMemoire(blocAlloc);
+    // Mise à jour des métadonnées après compactage
+    BlocMetadonnees* blocMeta = &blocs[0].content.metadataTable; // Par exemple, on commence avec le premier bloc
+    for (i = 0; i < blocMeta->nbrMetadonnees; i++) {
+        // Parcourir les métadonnées et ajuster les adresses des blocs
+        fichiermetadonnes* fichier = &blocMeta->T[i];
+        if (fichier->Modeorganisationglobale == 0) {
+            // Si c'est une chaîne, mettre à jour les adresses si nécessaire
+            // Exemple de mise à jour des adresses des blocs de données
+            fichier->Adrpremierbloc = allocation->tablelocation[fichier->Adrpremierbloc].adrdebloc;
+        }
+    }
+    
+    // Mise à jour du nombre de blocs utilisés après compactage
+    allocation->nbrblocutil = 0;
+    for (i = 0; i < allocation->nbrbloc; i++) {
+        if (allocation->tablelocation[i].etat == 1) {
+            allocation->nbrblocutil++;
+        }
+    }
+    
+    printf("Compactage terminé. Nombre de blocs utilisés après compactage : %d\n", allocation->nbrblocutil);
 }
+
+  
 
 
 
@@ -443,7 +474,7 @@ scanf("%d",&choix);
                  afficherEtatMemoire(/*latable dallocation*/);
 
                   // Appeler la fonction de compactage
-                  compactMS(/*latableallocationn*/);
+                  compactMS();
                 break;
             case 12:
                 printf("Mémoire secondaire vidée\n");
