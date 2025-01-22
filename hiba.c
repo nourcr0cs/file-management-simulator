@@ -4,8 +4,7 @@
 #include <stdbool.h>
 #include <math.h>
 
-// Définir une constante pour la taille maximale des blocs
-//#define FB 20          // FB : Taille fixe d'un bloc (10 enregistrements par bloc maximum)
+
 //---------------------------------------------LES STRUCTURES NECESSAIRES--------------------------------------------------
 #define facteur_blocage 20
 
@@ -186,9 +185,7 @@ void compactageDisque(FILE *disque) {
     
     printf("Compactage terminé. %d blocs utilisés après compactage.\n", blocLibre);
 }
-//==========================================our program======================================
-//------------------------------------FONCTIONS INDEPANDANTES-----------------------------
-//----------------------------MISE A JOUR DE TABLE D'ALLOCATION -------------------------------
+
 
 void metajourtableallocation (FILE* disque, int blocIndex, int etat)  {
     Bloc buffer;
@@ -303,7 +300,7 @@ return MT;
     maladie malade;
     int cpt=-1;
     int blocNbr;
-    int enre;
+    int enre =  MT.Taillefichierenregistrements;
     int i=0;
  bool compac ;
    int nbrB=0;//nombre de bloc
@@ -320,12 +317,15 @@ return MT;
    if (enre > facteur_blocage)
      enre = enre / facteur_blocage + enre % facteur_blocage ;
  
+    
+    
+    
     while(nbrMalade <= MT.Taillefichierenregistrements && malade.id !=-1){    
     nbrMalade++;
     printf("---------------------------------- \n");
     printf("entrer la reference de malade %d:\n",nbrMalade);
     scanf("%d",&malade.id);
- // si id=-1 alors on arrete de remplir le bloc
+ 
     printf("entrer le nom de malade %d:\n",nbrMalade);
     scanf("%s",malade.name);
     printf("entrer l'age de malade %d :\n",nbrMalade);
@@ -385,7 +385,7 @@ return MT;
     Bloc buffer;
     rewind(disque);
     fread(&buffer, sizeof(buffer), 1, disque);       //   les informations de nouveau malade
-    printf("entrer les informations de nouveau malade :\n pour l'arrêt vous pouvez entrer -1 pour la reference \n");
+    printf("entrer les informations de nouveau malade :\n");
     printf("entrer la reference de malade:\n ");
     scanf("%d",&newmalade.id);
     printf("entrer le nom de malade :\n");
@@ -403,7 +403,7 @@ return MT;
     fread(&buffer, sizeof(buffer), 1, disque);
     int iend =buffer.content.metadataTable.T[indexMeta].Taillefichierenregistrements;
     if (iend/ buffer.content.metadataTable.T[indexMeta].Taillefichierenregistrements!=0){   // il y a espace
-    fseek(disque,0,SEEK_END);
+    fseek(disque,0,SEEK_CUR);
     newmalade.suprimelogiqument=0;
     buffer.content.fileData.T[iend+1].id =newmalade.id;//id
     copyString(buffer.content.fileData.T[iend+1].name, newmalade.name);//name
@@ -437,6 +437,7 @@ return MT;
     buffer.content.metadataTable.T[index].Taillefichierenregistrements++;
     buffer.typedebloc=1;
     fwrite(&buffer, sizeof(buffer), 1, disque);   // to cheak later !!!
+    printf("l'element est ajouté avec succès ");
 
   }
    //---------------------------------------LA RECHERCHE dans fichier TNOF-----------------------
