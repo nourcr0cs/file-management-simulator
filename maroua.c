@@ -74,7 +74,7 @@
 
 
     // Function to check if there is enough space for the requested number of blocks
-    bool verifierEspaceSuffisant(FILE* disque, int nbrBlocsVoulu) {
+    bool verifierEspaceSuffisant(FILE* disque, int nbrBlocsVoulu) { 
         Bloc buffer;
         rewind(disque);
         buffer.typedebloc=3;
@@ -420,10 +420,9 @@
    char* creerfichierCO(FILE* disque){
         char* nomFichier=(char*)malloc(20*sizeof(char));
         if(!nomFichier){
-            printf("Erreur : Allocation de memoire echoue.\n");
+            printf("Erreur : Allocation de mémoire échouée.\n");
             return NULL;
         }
-        int Taillefichierenregistrements=0;
 
         fichiermetadonnes metadonnes;
         rewind(disque);
@@ -432,7 +431,7 @@
         scanf("%19s",metadonnes.Nomdufichier);
 
         printf("Donner la taille de fichier en enregistrement : \n");
-        scanf("%d",&Taillefichierenregistrements);
+        scanf("%d",&metadonnes.Taillefichierenregistrements);
 
         printf("Donner le mode d'organisation globale : \n");
         scanf("%d",&metadonnes.Modeorganisationglobale);
@@ -440,10 +439,9 @@
         printf("Donner le mode d'organisation interne : \n");
         scanf("%d",&metadonnes.Modeorganisationinterne);
 
-     int taille=Taillefichierenregistrements/20+(Taillefichierenregistrements%20!=0);
+        int taille=ceil((double)metadonnes.Taillefichierenregistrements/20)+1;
 
         metadonnes.Taillefichierblocs=taille;
-        metadonnes.Taillefichierenregistrements=0;
 
         if(!verifierEspaceSuffisant(disque ,taille)){
             free(nomFichier);
@@ -453,16 +451,16 @@
         bool succes=ajoutermetadonnes(disque ,metadonnes ,taille);
 
         if(succes){
-            printf("Le fichier '%s' a ete cree avec succes.\n", metadonnes.Nomdufichier);
+            printf("Le fichier '%s' a été créé avec succès.\n", metadonnes.Nomdufichier);
             strcpy(nomFichier ,metadonnes.Nomdufichier);
             return nomFichier;
         } else {
-            printf("Erreur : espace insuffisant pour creer le fichier '%s'.\n", metadonnes.Nomdufichier);
+            printf("Erreur : espace insuffisant pour créer le fichier '%s'.\n", metadonnes.Nomdufichier);
             free(nomFichier);
             return NULL;
         }
    }
-
+ // allocation of blocs and do the chainage
    void chargerfichier(FILE* disque) {
 
        Bloc buffer;
@@ -472,84 +470,77 @@
        // Récupérer les métadonnées du fichier
        fichiermetadonnes metadonnes;
        nomFichier=creerfichierCO(disque);
-       int blocnecessaire = liremetadonnes(disque,nomFichier,1);
+       adressemetadonnes adresse = recherchemetadonnes(disque, nomFichier);
+       int taille=liremetadonnes(disque,nomFichier,1);
+
+       if (adresse.numerodebloc == -1) {
+           printf("Fichier introuvable \n");
+           return;  // Le fichier n'a pas été trouvé
+       }
+        printf("Chargement des métadonnées du fichier : %s\n", nomFichier);
+       // Charger les métadonnées dans le buffer
+       fseek(disque, adresse.numerodebloc * sizeof(Bloc), SEEK_SET);
+       fread(&buffer, sizeof(Bloc), 1, disque);
+
+       if (buffer.typedebloc != 1) {
+           printf("Le bloc ne contient pas de métadonnées.\n");
+           return;
+       }
+
+       metadonnes = buffer.content.metadataTable.T[adresse.index];
+
+       int blocnecessaire = metadonnes.Taillefichierblocs;
        int bloctrouve = 0; // Pour compter les blocs trouvés
        int adrPremierBloc = -1; // Variable pour stocker l'adresse du premier bloc
        int nbrbloctotal=obtenirNombreBlocs(disque,2);
        int nbrblocutiliser=obtenirNombreBlocs(disque,1);
-       int blocPrecedent=-1;
-       int place=-1;
+       // Lire la table d'allocation (stockée dans le premier bloc)
+       fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
+       fread(&buffer, sizeof(Bloc), 1, disque);
 
-
-
+       if (buffer.typedebloc != 3) {
+           printf("Le bloc d'allocation n'est pas valide.\n");
+           return;
+       }
 
        // Allouer les blocs nécessaires
        for (int i = 0; i < nbrbloctotal && bloctrouve < blocnecessaire; i++) {
+       fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
+       fread(&buffer, sizeof(Bloc), 1, disque);
 
-           for (int j = 0; j < nbrbloctotal; j++) {
-            buffer.typedebloc=3;
-            fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
-            fread(&buffer, sizeof(Bloc), 1, disque);
-            if (buffer.content.allocation.tablelocation[j].etat == 0) {
-                place = j;
-                metajourtableallocation(disque,j,1);
+       if (buffer.content.allocation.tablelocation[i].etat==0) {  // Si le bloc est vide
+               metajourtableallocation(disque, i, 1);  // Marquer le bloc comme utilisé
 
-                break;
-            }
-        }
-        if (place == -1) {
-            printf("Espace insuffisant pour inserer un nouvel enregistrement.\n");
-            return;
-        }
+               // Enregistrer l'adresse du premier bloc alloué
+               if (adrPremierBloc == -1) {
+                   adrPremierBloc = i;
+               }else{
+               // Chaînage des blocs : mise à jour du champ "next" du bloc précédent
 
-    // Si c'est le premier bloc alloué
-    if (adrPremierBloc == -1) {
-        adrPremierBloc = place;
-        blocPrecedent=place;
-        fseek(disque, adrPremierBloc * sizeof(Bloc), SEEK_SET);
-        fread(&buffer, sizeof(Bloc), 1, disque);
-        buffer.content.fileData.next=-1;
-        buffer.typedebloc=2;
-        fseek(disque, adrPremierBloc * sizeof(Bloc), SEEK_SET);
-        fwrite(&buffer, sizeof(Bloc), 1, disque);
+                   fseek(disque, adrPremierBloc * sizeof(Bloc), SEEK_SET);
+                   fread(&buffer, sizeof(Bloc), 1, disque);
+                   buffer.content.fileData.next = i;
+                   fseek(disque, adrPremierBloc * sizeof(Bloc), SEEK_SET);
+                   fwrite(&buffer, sizeof(Bloc), 1, disque);
+               }
 
-
-    } else {
-        // Chaînage des blocs : mise à jour du champ "next" du dernier bloc alloué
-
-        fseek(disque, blocPrecedent * sizeof(Bloc), SEEK_SET);
-        fread(&buffer, sizeof(Bloc), 1, disque);
-        buffer.content.fileData.next= place;  // Mise à jour du champ "next"
-        buffer.typedebloc=2;
-        fseek(disque, blocPrecedent * sizeof(Bloc), SEEK_SET);
-        fwrite(&buffer, sizeof(Bloc), 1, disque);
-        fseek(disque, place* sizeof(Bloc), SEEK_SET);
-        fread(&buffer, sizeof(Bloc), 1, disque);
-        buffer.typedebloc=2;
-        buffer.content.fileData.next=-1;
-        fseek(disque, place * sizeof(Bloc), SEEK_SET);
-        fwrite(&buffer, sizeof(Bloc), 1, disque);
-
-
-
-    }
-
-    // Enregistrer l'adresse du bloc actuel pour le chaînage futur
-    blocPrecedent=place ;
-    bloctrouve++;
-}
+               // Enregistrer l'adresse du bloc actuel pour le chaînage futur
+               adrPremierBloc = i;
+               bloctrouve++;
+           }
+       }
 
        // Si les blocs nécessaires n'ont pas été trouvés
 
        if (bloctrouve < blocnecessaire) {
-           printf("Espace insuffisant pour allouer tous les blocs necessaires.\n");
+           printf("Espace insuffisant pour allouer tous les blocs nécessaires.\n");
            return;
 
            // Libération des blocs déjà alloués
            for (int i = 0; i < nbrbloctotal; i++) {
                if (buffer.content.allocation.tablelocation[i].etat == 1) {
                    metajourtableallocation(disque, i, 0);
-                   printf("Bloc %d libere.\n", i);
+                   printf("Bloc %d libéré.\n", i);
                }
            }
            return;
@@ -557,114 +548,99 @@
 
        // Mise à jour des métadonnées
        miseAJourMetadonnees(disque, nomFichier, 3, adrPremierBloc);
-       mettreAJourNombreBlocs(disque,1,nbrblocutiliser+blocnecessaire);
+       mettreAJourNombreBlocs(disque,1,nbrblocutiliser+taille);
 
-       printf("Fichier charge avec succes.\n");
+       printf("Fichier chargé avec succès.\n");
    }
+// Recover spaced used by enregistrement deleted
+   void defragmentation(FILE *disque, const char *nomFichier) {
+       Bloc buffer;             // buffer pour charger les blocs
+       maladie temp[20];        // tableau temporaire pour réorganiser les enregistrements
+       int blocactuelle, blocsuivant; // pointeurs pour le bloc courant et suivant
+       int indexTemp = 0;       // indice pour remplir le tableau temporaire
+       int totalEnregistrements = 0; // compteur pour les enregistrements valides
+       int taillefichierblocs;  // nombre de blocs utilisés après défragmentation
+       rewind(disque);
 
-  void defragmentation(FILE *disque, const char *nomFichier) {
-    Bloc buffer;             // Buffer pour charger les blocs
-    maladie temp[20];        // Tableau temporaire pour réorganiser les enregistrements
-    int blocactuelle, blocsuivant; // Pointeurs pour le bloc courant et suivant
-    int indexTemp = 0;       // Indice pour remplir le tableau temporaire
-    int totalEnregistrements = 0; // Compteur pour les enregistrements valides
-    int taillefichierblocs;  // Nombre de blocs utilisés après défragmentation
-    rewind(disque);
+       // obtenir le premier bloc et le nombre total d'enregistrements
+       int debut = liremetadonnes(disque, nomFichier, 3);
+       if (debut == -1) {
+           printf("Erreur : Le fichier %s est introuvable.\n", nomFichier);
+           return;
+       }
 
-    // Obtenir le premier bloc et le nombre total d'enregistrements
-    int debut = liremetadonnes(disque, nomFichier, 3);
-    if (debut == -1) {
-        printf("Erreur : Le fichier %s est introuvable.\n", nomFichier);
-        return;
-    }
+       totalEnregistrements = liremetadonnes(disque, nomFichier, 2); // nombre total d'enregistrements
+       if (totalEnregistrements == 0) {
+           printf("Le fichier %s est vide. Aucune défragmentation nécessaire.\n", nomFichier);
+           return;
+       }
 
-    totalEnregistrements = liremetadonnes(disque, nomFichier, 2); // Nombre total d'enregistrements
-    if (totalEnregistrements == 0) {
-        printf("Le fichier %s est vide. Aucune defragmentation necessaire.\n", nomFichier);
-        return;
-    }
+       // parcourir tous les blocs pour collecter les enregistrements valides
+       blocactuelle = debut;
+       while (blocactuelle != -1) {
+          // charger le bloc courant
+           fseek(disque, blocactuelle * sizeof(Bloc), SEEK_SET);
+           fread(&buffer, sizeof(Bloc), 1, disque);
 
-    // Étape 1 : Collecter tous les enregistrements valides
-    blocactuelle = debut;
-    while (blocactuelle != -1) {
-        // Charger le bloc courant
-        fseek(disque, blocactuelle * sizeof(Bloc), SEEK_SET);
-        if (fread(&buffer, sizeof(Bloc), 1, disque) != 1) {
-            printf("Erreur : Impossible de lire le bloc %d.\n", blocactuelle);
-            return;
-        }
+           // collecter les enregistrements valides dans le tableau temporaire
+           for (int i = 0; i < buffer.content.fileData.nbrmaladie; i++) {
+               if (!buffer.content.fileData.T[i].suprimelogiquement) {
+                   temp[indexTemp++] = buffer.content.fileData.T[i];
+               }
+           }
 
-        // Collecter les enregistrements valides dans le tableau temporaire
-        for (int i = 0; i < buffer.content.fileData.nbrmaladie; i++) {
-            if (!buffer.content.fileData.T[i].suprimelogiquement) {
-                temp[indexTemp++] = buffer.content.fileData.T[i];
-            }
-        }
+           blocactuelle = buffer.content.fileData.next; // passer au bloc suivant
+       }
 
-        blocactuelle = buffer.content.fileData.next; // Passer au bloc suivant
-    }
+       // calculer le nombre de blocs nécessaires
+       taillefichierblocs = (indexTemp + 20 - 1) / 20;
 
-    // Calculer le nombre de blocs nécessaires après défragmentation
-    taillefichierblocs = (indexTemp + 20 - 1) / 20; // Diviser en arrondissant vers le haut
+       // écriture des blocs avec les enregistrements valides
+       blocactuelle = debut;
+       indexTemp = 0;
+       for (int i = 0; i < taillefichierblocs; i++) {
+           // charger ou initialiser un bloc existant
+           fseek(disque, blocactuelle * sizeof(Bloc), SEEK_SET);
+           fread(&buffer, sizeof(Bloc), 1, disque);
 
-    // Étape 2 : Réécrire les enregistrements dans les blocs nécessaires
-    blocactuelle = debut;
-    indexTemp = 0;
-    for (int i = 0; i < taillefichierblocs; i++) {
-        // Charger ou initialiser un bloc existant
-        fseek(disque, blocactuelle * sizeof(Bloc), SEEK_SET);
-        if (fread(&buffer, sizeof(Bloc), 1, disque) != 1) {
-            printf("Erreur : Impossible de lire le bloc %d.\n", blocactuelle);
-            return;
-        }
+           // remplir le bloc avec les enregistrements valides
+           int nbrEnregistrements = 0;
+           while (indexTemp < totalEnregistrements && nbrEnregistrements < 20) {
+               buffer.content.fileData.T[nbrEnregistrements++] = temp[indexTemp++];
+           }
+           buffer.content.fileData.nbrmaladie = nbrEnregistrements;
 
-        // Remplir le bloc avec les enregistrements valides
-        int nbrEnregistrements = 0;
-        while (indexTemp < totalEnregistrements && nbrEnregistrements < 20) {
-            buffer.content.fileData.T[nbrEnregistrements++] = temp[indexTemp++];
-        }
+           // gestion du chaînage
+           if (i == taillefichierblocs - 1) {
+               buffer.content.fileData.next = -1; // dernier bloc
+           } else {
+               blocsuivant = buffer.content.fileData.next; // conserver le chaînage
+           }
 
-        buffer.content.fileData.nbrmaladie = nbrEnregistrements;
+           // ecrire le bloc mis à jour
+           fseek(disque, blocactuelle * sizeof(Bloc), SEEK_SET);
+           fwrite(&buffer, sizeof(Bloc), 1, disque);
 
-        // Gestion du chaînage
-        if (i == taillefichierblocs - 1) {
-            buffer.content.fileData.next = -1; // Dernier bloc
-        } else {
-            blocsuivant = buffer.content.fileData.next; // Conserver le chaînage
-        }
+           // passer au bloc suivant
+           blocactuelle = buffer.content.fileData.next;
+       }
 
-        // Écrire le bloc mis à jour
-        fseek(disque, blocactuelle * sizeof(Bloc), SEEK_SET);
-        if (fwrite(&buffer, sizeof(Bloc), 1, disque) != 1) {
-            printf("Erreur : Échec d'écriture dans le bloc %d.\n", blocactuelle);
-            return;
-        }
+       // libérer les blocs inutilisés dans la table d'allocation
+       while (blocactuelle != -1) {
+           fseek(disque, blocactuelle * sizeof(Bloc), SEEK_SET);
+           fread(&buffer, sizeof(Bloc), 1, disque);
 
-        blocactuelle = buffer.content.fileData.next;
-    }
+         metajourtableallocation(disque, blocactuelle, 0); // libérer le bloc
+           blocactuelle = buffer.content.fileData.next;
+       }
 
-    // Étape 3 : Libérer les blocs inutilisés dans la table d'allocation
-    while (blocactuelle != -1) {
-        fseek(disque, blocactuelle * sizeof(Bloc), SEEK_SET);
-        if (fread(&buffer, sizeof(Bloc), 1, disque) != 1) {
-            printf("Erreur : Impossible de lire le bloc %d.\n", blocactuelle);
-            return;
-        }
+       // mettre à jour les métadonnées
+       miseAJourMetadonnees(disque, nomFichier, 1, taillefichierblocs); // taille en blocs
+       miseAJourMetadonnees(disque, nomFichier, 2, totalEnregistrements); // nombre d'enregistrements
 
-        // Libérer le bloc courant
-        metajourtableallocation(disque, blocactuelle, 0);
-
-        blocactuelle = buffer.content.fileData.next;
-    }
-
-    // Étape 4 : Mise à jour des métadonnées
-    miseAJourMetadonnees(disque, nomFichier, 1, taillefichierblocs); // Taille en blocs
-    miseAJourMetadonnees(disque, nomFichier, 2, totalEnregistrements); // Nombre d'enregistrements
-
-    printf("Defragmentation du fichier %s terminee avec succes.\n", nomFichier);
-    return;
-}
-
+       printf("Défragmentation du fichier %s terminée avec succès.\n", nomFichier);
+       return;
+   }
 
 
 
@@ -681,9 +657,8 @@
    bool decalage= false;
    rewind(disque);
 
-   defragmentation(disque,nomFichier);// pour recuperer les espaces inutiliser
 
-    adressemetadonnes adresse = recherchemetadonnes(disque, nomFichier);
+   adressemetadonnes adresse = recherchemetadonnes(disque, nomFichier);
 
    int debut=liremetadonnes(disque,nomFichier,3);// adresse de 1 bloc
 
@@ -700,39 +675,36 @@
            return;
        }
 
+
+
+   defragmentation(disque,nomFichier);// pour recuperer les espaces inutiliser
+
    // mtnsaych compactage
 
    // verifier si il ya un espace pour un enregistrement  sinon on alouer un nouveaux bloc
 
 
-   bool allouer = false;
-   if(nbrbloc*20>nbrenregistrement){
-    allouer=true;
-   }else{allouer=false;}
+   bool allouer = (nbrenregistrement % 20 == 0);
 
    // verifier si il ya un decalge (insertion dans 1 bloc
 
-    blocactuelle= debut;
+   blocdernier = debut;
 
-   // verifier si il ya un decalge (insertion dans 1 bloc)
+   int maxIterations = 20; // Prevent infinite loops
+   int iterations = 0;
 
-   // Parcourir les blocs jusqu'au dernier ou atteindre le nombre de blocs utilisés
-   buffer.typedebloc=2;
-    for (int i = 0; i <nbrbloc ; i++) {
-        fseek(disque, blocactuelle * sizeof(Bloc), SEEK_SET);
-        if (fread(&buffer, sizeof(Bloc), 1, disque) != 1) {
-            printf("Erreur : Impossible de lire le bloc %d.\n", blocactuelle);
-            return -1; // Erreur
-        }
-
-        if (buffer.content.fileData.next == -1) {
-            blocdernier = blocactuelle; // Bloc final atteint
-            break;
-        }
-
-        blocactuelle = buffer.content.fileData.next;
-    }
-
+   while (buffer.content.fileData.next != -1) {
+       if (++iterations > maxIterations) {
+           printf("Erreur : Boucle infinie détectée dans le chaînage.\n");
+           break;
+       }
+       fseek(disque, blocdernier * sizeof(Bloc), SEEK_SET);
+       if (fread(&buffer, sizeof(Bloc), 1, disque) != 1) {
+           printf("Erreur : Impossible de lire le bloc.\n");
+           break;
+       }
+       blocdernier = buffer.content.fileData.next;
+   }
 
 
    // lire le information de la  nouvelle maladie
@@ -754,23 +726,29 @@
 
    //  cas 1 :si l'enregistrement pour inserer est le  1 enregistrement dans le fichier(fichier vide
 
-    if (nbrenregistrement == 0) {
-        printf("Insertion dans un fichier vide.\n");
-        fseek(disque, debut * sizeof(Bloc), SEEK_SET);
-        fread(&buffer, sizeof(Bloc), 1, disque);
-        buffer.typedebloc = 2;
-        buffer.content.fileData.T[0] = m;
-        buffer.content.fileData.nbrmaladie = 1;
-        buffer.content.fileData.next = -1;
-        // ecrire les changement
-        fseek(disque, debut * sizeof(Bloc), SEEK_SET);
-        fwrite(&buffer, sizeof(Bloc), 1, disque);
-        // mise a jour les metadonnes
-        miseAJourMetadonnees(disque, nomFichier, 2, nbrenregistrement + 1);
-        return;
-    }
+   if(nbrenregistrement==0)  {
+   printf("Insertion dans un fichier vide.\n");
+   fseek(disque, debut * sizeof(Bloc), SEEK_SET);
+   fread(&buffer, sizeof(Bloc), 1, disque);
 
 
+   buffer.typedebloc=2;
+   buffer.content.fileData.T[0]=m;
+   buffer.content.fileData.nbrmaladie = 1;
+   buffer.content.fileData.next = -1;
+
+
+   // ecrire les changement
+
+   fseek(disque, debut * sizeof(Bloc), SEEK_SET);
+   fwrite(&buffer, sizeof(Bloc), 1, disque);
+
+   // mise a jour les metadonnes
+
+   miseAJourMetadonnees(disque, nomFichier, 2,nbrenregistrement++);
+
+   return ;
+   }
 
    // Chercher la position d'insertion
 
@@ -782,45 +760,60 @@
 
    // parcourir les bloc
 
-       while ((blocactuelle != -1) && (!positiontrouve)) {
-        fseek(disque, blocactuelle * sizeof(Bloc), SEEK_SET);
-        fread(&buffer, sizeof(Bloc), 1, disque);
-        for (int i = 0; i < buffer.content.fileData.nbrmaladie; i++) {
-            if (m.id < buffer.content.fileData.T[i].id) {
-                position = i;
-                positiontrouve = true;
-                decalage = true;
-                break;
-            }
-        }
-        if (!positiontrouve) {
-            blocactuelle = buffer.content.fileData.next;
-        }
-    }
+   while( (blocactuelle!=-1)  &&  (!positiontrouve) ){ // boucle pour chercher la position
 
-    if (blocdernier == blocactuelle) {
-        decalage = false;
-    } else {
-        decalage = true;
-    }
+   fseek(disque, blocactuelle * sizeof(Bloc), SEEK_SET);
+   fread(&buffer, sizeof(Bloc), 1, disque);
+
+   for(int i=0;i<buffer.content.fileData.nbrmaladie-1;i++){
+
+   // comparer les id pour trouver la position
+
+   if(m.id<buffer.content.fileData.T[i].id){
+
+      position=i;
+      positiontrouve=true;
+      decalage = true; // Décalage nécessaire si l'insertion n'est pas à la fin
+
+      break;
+
+   }
+   }
+
+   if (!positiontrouve){
+           blocactuelle=buffer.content.fileData.next;}
+   }
+
+   //verifier si adresse de l'enregistrement est dans le bloc derniere
+
+   if(blocdernier==blocactuelle)
+   {
+       decalage=false;
+
+   }
+   else{decalage=true;}
 
    // cas sans decalge sans allocation
    if (!decalage && !allouer) {
 
-            printf("Insertion dans le dernier bloc existant sans decalage inter bloc est sans  allocation.\n");
-            buffer.typedebloc=2;
+            printf("Insertion dans un bloc existant sans décalage ni allocation.\n");
+
            fseek(disque, blocdernier * sizeof(Bloc), SEEK_SET);
            fread(&buffer, sizeof(Bloc), 1, disque);
 
            for (int j = buffer.content.fileData.nbrmaladie; j > position; j--) {
-               buffer.content.fileData.T[j] = buffer.content.fileData.T[j - 1]; // Décalage intra bloc
+               buffer.content.fileData.T[j] = buffer.content.fileData.T[j - 1]; // Décalage
            }
+
            buffer.content.fileData.T[position] = m;
            buffer.content.fileData.nbrmaladie++;
+
            // Écrire les changements
            fseek(disque, blocdernier * sizeof(Bloc), SEEK_SET);
            fwrite(&buffer, sizeof(Bloc), 1, disque);
-           printf("Insertion termine avec succes.\n");
+
+           printf("Insertion terminée avec succès.\n");
+
            // Mise à jour des métadonnées
            miseAJourMetadonnees(disque, nomFichier, 2, nbrenregistrement + 1);
 
@@ -831,30 +824,30 @@
 
    if(allouer&&!decalage){
 
-       printf("insertion dans le derniere bloc  avec allocation d'un nouveau bloc.\n");
+       printf("insertion dans le derniere bloc  sans allocation d'un nouveau bloc.\n");
 
            // Trouver un bloc libre pour l'allocation
            int place = -1;
            buffer.typedebloc=3;
            for (int i = 0; i < nbrbloctotal; i++) {
-            fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
-            fread(&buffer, sizeof(Bloc), 1, disque);
-            if (buffer.content.allocation.tablelocation[i].etat == 0) {
-                place = i;
-                break;
-            }
-        }
-        if (place == -1) {
-            printf("Espace insuffisant pour inserer un nouvel enregistrement.\n");
-            return;
-        }
+               fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
+               fread(&buffer, sizeof(Bloc), 1, disque);
+               if (buffer.content.allocation.tablelocation[i].etat == 0) {
+                   place = i;
+                   break;
+               }
+           }
+
+           if (place == -1) {
+               printf("Espace insuffisant pour insérer un nouvel enregistrement.\n");
+               return;
+           }
            buffer.typedebloc=2;
            // Charger le dernier bloc pour récupérer l'enregistrement à décaler
            fseek(disque, blocdernier * sizeof(Bloc), SEEK_SET);
            fread(&buffer, sizeof(Bloc), 1, disque);
 
-           if(enrdecale.id>=m.id) {
-                enrdecale = buffer.content.fileData.T[buffer.content.fileData.nbrmaladie - 1]; // Dernier enregistrement du bloc
+           enrdecale = buffer.content.fileData.T[buffer.content.fileData.nbrmaladie - 1]; // Dernier enregistrement du bloc
            for (int j = buffer.content.fileData.nbrmaladie - 1; j > position; j--) {
                buffer.content.fileData.T[j] = buffer.content.fileData.T[j - 1];
            }
@@ -867,14 +860,17 @@
 
            fseek(disque, blocdernier * sizeof(Bloc), SEEK_SET);
            fwrite(&buffer, sizeof(Bloc), 1, disque);
-           buffer.content.fileData.T[0] = enrdecale;
 
-          } else{
-               // Allouer un nouveau bloc pour le décalage
+           // Allouer un nouveau bloc pour le décalage
            fseek(disque, place * sizeof(Bloc), SEEK_SET);
            fread(&buffer, sizeof(Bloc), 1, disque);
    //verifier si le eng que en va inserer et superieur au tous les eng alors il va inserer dans le bloc allouer sinon le derniere eng de dernier bloc il va sauter
-            buffer.content.fileData.T[0]=m;}
+
+
+          if(enrdecale.id>=m.id) {
+           buffer.content.fileData.T[0] = enrdecale;
+
+          } else{buffer.content.fileData.T[0]=m;}
           // Déplacer l'enregistrement décalé dans le nouveau bloc
 
 
@@ -891,18 +887,18 @@
            miseAJourMetadonnees(disque, nomFichier, 3, nbrbloc + 1);
            mettreAJourNombreBlocs(disque, 1, nombrblocutil + 1);
 
-           printf("Decalage avec allocation effectue avec succes.\n");
+           printf("Décalage avec allocation effectué avec succès.\n");
            return;
        }
 
 
 
-   // cas avec decalage l'insertion  n'est pas dans le derniere bloc
+   // cas avec decalage l'eng n'est pas dans le derniere bloc
 
    if(decalage){
-   printf("Decalage inter-bloc \n");
+   printf("Décalage intra-bloc sans allocation.\n");
    buffer.typedebloc=2;
-   fseek(disque,blocactuelle* sizeof(Bloc), SEEK_SET);
+   fseek(disque,blocactuelle* sizeof(Bloc), SEEK_SET); // charger le bloc suivant pour faire le decalage
    fread(&buffer, sizeof(Bloc), 1, disque);
 
    // buffer est chargé le bloc ou en va inserer
@@ -911,14 +907,17 @@
 
    //decaler les enregistrement dans  bloc ou en a trouver la position
 
-   for(int j=20-1;j>position;j--){ // fb-1 car le 1 index array est
+   for(int j=20-1;j>position;j--){ // fb-1 car le 1 index array est 0
+
+
    buffer.content.fileData.T[j] = buffer.content.fileData.T[j - 1]; // pour vider l'espace de position
+
    }
 
    buffer.content.fileData.T[position]=m;
-   buffer.typedebloc=1;
+
    miseAJourMetadonnees( disque,nomFichier, 2, nbrenregistrement++);
-   buffer.typedebloc=2;
+
    // ecrire les changement
 
    fseek(disque, blocactuelle * sizeof(Bloc), SEEK_SET);
@@ -941,7 +940,10 @@
    enr=buffer.content.fileData.T[buffer.content.fileData.nbrmaladie-1];// avant decalge en engistré le eng qui va sauter
 
      for(int i=20-1;i>0;i--) {// decaler pour vider la 1 case
+
+
        buffer.content.fileData.T[i]=buffer.content.fileData.T[i-1];
+
      }
 
      buffer.content.fileData.T[0]=enrdecale; // met le eng qui a sauter dans la 1 case
@@ -1018,12 +1020,10 @@
 
    miseAJourMetadonnees( disque,nomFichier, 3, nbrbloc++);
    mettreAJourNombreBlocs(disque,1,nombrblocutil+1);
-   printf("insertion avec decalage est allocation avec succes ");
-   return;
 
-  }else{printf("insertion avec decalage est sans allocation avec succes ");
-  return;}
+  }
    }
+   return; // sortir car l 'insertion est faite
 
   }
 
@@ -1036,9 +1036,18 @@
 
   buffer.typedebloc=2;
 
-  int blocactuelle=-1;// pour parcourir les blocs
+  int blocactuelle;// pour parcourir les blocs
 
   bool find=false;
+
+
+  adressemetadonnes adress=recherchemetadonnes(disque,nomFichier);
+
+    // Vérifiez si le fichier existe
+       if (adress.numerodebloc == -1) {
+           printf("Fichier introuvable : %s\n", nomFichier);
+           return adressetrouve;
+       }
 
   blocactuelle=liremetadonnes(disque,nomFichier,3);// adresse de 1 bloc
 
@@ -1047,37 +1056,44 @@
   int nbrbloc=liremetadonnes(disque,nomFichier,1);// nombre total de bloc
 
   // Parcourir les blocs
+       while (blocactuelle != -1) {
+           fseek(disque, blocactuelle * sizeof(Bloc), SEEK_SET);
+           fread(&buffer, sizeof(Bloc), 1, disque);
 
+          // Vérifiez si le bloc est de type fichier (type 2)
+           if (buffer.typedebloc != 2) {
+               printf("Erreur : Bloc inattendu (type %d).\n", buffer.typedebloc);
+               return adressetrouve;
+           }
 
   for(int i=blocactuelle;i<nbrbloc;i++){
-      buffer.typedebloc=2;
       fseek(disque, blocactuelle * sizeof(Bloc), SEEK_SET);// charger le bloc pur lire le tableau
       fread(&buffer, sizeof(Bloc), 1, disque);
 
      for(int j=0;j<buffer.content.fileData.nbrmaladie;j++) {
 
          if (buffer.content.fileData.T[j].id==ID){
+
                 adressetrouve.numerodebloc=i;
                 adressetrouve.index=j;
                 find=true;
-                printf("Enregistrement trouver dans le bloc : %d est dans index : %d",i,j);
-                return adressetrouve;}
-}
-blocactuelle=buffer.content.fileData.next;
-  // Si `next` est -1, cela signifie que vous avez atteint la fin de la chaîne de blocs
-        if (blocactuelle == -1) {
-            break; // Arrêter la boucle si le bloc suivant est invalide
-        }
-}
+                return adressetrouve;
+
+         }
+
+     }
+
+     blocactuelle=buffer.content.fileData.next;
 
 
-
-  if(find==false){
-       printf("enregistrement recherche ne existe pas.");
-       return adressetrouve;
+  }
    }
 
-  return ;
+  if(find==false){
+       printf("l’enregistrement recherché n’existe pas.");
+   }
+
+  return adressetrouve;
    }
 
 
@@ -1623,10 +1639,15 @@ blocactuelle=buffer.content.fileData.next;
                    printf("Recherche d'enregistrement\n");
                    printf("Entrez le nom du fichier : ");
                    scanf("%s", nomFichier);
-                   printf("Entrez l'ID de l'enregistrement a rechercher : ");
+                   printf("Entrez l'ID de l'enregistrement à rechercher : ");
                    scanf("%d", &ID);
                    adressemetadonnes resultat = rechercheebregistrement(disque, nomFichier, ID);
-
+                   if (resultat.numerodebloc == -1) {
+                       printf("Enregistrement introuvable.\n");
+                   } else {
+                       printf("Enregistrement trouvé dans le bloc %d, index %d.\n",
+                              resultat.numerodebloc, resultat.index);
+                   }
                    break;
 
               case 6:
