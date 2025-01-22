@@ -154,51 +154,56 @@ void compactage(Bloc* blocs, int nbrBlocs, BlocAllocation* allocation) {
 
 
 
-// Fonction qui vérifie s'il y a de l'espace contigu dans la mémoire centrale
-void gestionEspace(Bloc *bloc, int nbrBlocsRequis) {
-    int espaceTrouve = 0;
-    int debutEspace = -1;
-    
-    // Vérifie si la table d'allocation est accessible
-    if (bloc->typedebloc != 3) {
-        printf("Type de bloc invalide pour l'allocation.\n");
-        return;
-    }
+//------------------------------------------- Fonction qui vérifie s'il y a de l'espace contigu dans la mémoire centrale--------------------------------------
+#include <stdio.h>
+#include <stdbool.h>
 
-    // Recherche de l'espace contigu disponible dans la table d'allocation
-    for (int i = 0; i < bloc->content.allocation.ms.nbrbloc - nbrBlocsRequis + 1; i++) {
-        int espaceLibre = 0;
-
-        // Vérifie si les `nbrBlocsRequis` blocs sont vides et contigus
-        for (int j = i; j < i + nbrBlocsRequis; j++) {
-            if (bloc->content.allocation.tablelocation[j].etat == 0) {
-                espaceLibre++;
-            } else {
-                break;  // Si un bloc est plein, on arrête la vérification
-            }
-        }
-
-        // Si on trouve suffisamment de blocs vides et contigus
-        if (espaceLibre == nbrBlocsRequis) {
-            debutEspace = i;
-            espaceTrouve = 1;
-            break;
+// Fonction pour vérifier la disponibilité de blocs libres
+bool verifierEspaceLibre(BlocAllocation* allocation, int nombreBlocsRequis) {
+    int blocsLibres = 0;
+    // Compter le nombre de blocs libres
+    for (int i = 0; i < allocation->nbrbloc; i++) {
+        if (allocation->tablelocation[i].etat == 0) {
+            blocsLibres++;
         }
     }
+    return blocsLibres >= nombreBlocsRequis; // Retourne vrai si assez de blocs libres
+}
 
-    if (espaceTrouve) {
-        // Afficher l'espace trouvé
-        printf("Espace trouvé : %d blocs contigus à partir de l'adresse %d\n", nbrBlocsRequis, bloc->content.allocation.tablelocation[debutEspace].adrdebloc);
-    } else {
-        // Si l'espace n'est pas contigu, appelle la fonction de compactage
-        printf("Aucun espace contigu trouvé. Appel de la fonction de compactage...\n");
-        compactage(&bloc->content.allocation);
+// Fonction de compactage proposée si l'espace est insuffisant
+void proposerCompactage(Bloc* blocs, int nbrBlocs, BlocAllocation* allocation) {
+    printf("Espace insuffisant. Proposer compactage...\n");
+
+    // Appel de la fonction de compactage pour réorganiser les blocs et récupérer de l'espace libre
+    compactage(blocs, nbrBlocs, allocation);
+}
+
+// Fonction principale de gestion de l'espace avant une opération (création ou insertion)
+void gererEspace(Bloc* blocs, int nbrBlocs, BlocAllocation* allocation, int nombreBlocsRequis) {
+    // Vérifier si l'espace libre est suffisant
+    if (verifierEspaceLibre(allocation, nombreBlocsRequis)) {
+        printf("Espace suffisant pour effectuer l'opération.\n");
+        return;  // L'espace est suffisant, on peut continuer l'opération
     }
+
+    // Si l'espace est insuffisant, proposer un compactage
+    proposerCompactage(blocs, nbrBlocs, allocation);
+
+    // Re-vérifier l'espace après compactage
+    if (verifierEspaceLibre(allocation, nombreBlocsRequis)) {
+        printf("Compactage effectué. L'espace est maintenant suffisant pour effectuer l'opération.\n");
+        return;  // Après compactage, l'espace est suffisant
+    }
+
+    // Si l'espace reste insuffisant après compactage
+    printf("Erreur : Espace insuffisant même après compactage. La mémoire secondaire est pleine.\n");
 }
 
 int main(){
 
-
+int modeI,modeG;
+File* disque;
+int choix ;
  printf("\n--- Gestion de la Mémoire Secondaire ---\n");
         printf("1. Initialiser la mémoire secondaire\n");
         printf("2. Créer un fichier\n");
@@ -217,9 +222,7 @@ int main(){
         printf("Votre choix : ");
         scanf("%d", &choix);
 
- int modeI,modeG;
- Ms disque;
- int choix ;
+ 
 scanf("%d",&choix);
  switch(choix) {
             case 1:
