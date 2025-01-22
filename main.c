@@ -247,8 +247,7 @@ void compactage(Bloc* blocs, int nbrBlocs, BlocAllocation* allocation) {
 
 
 //------------------------------------------- Fonction qui vérifie s'il y a de l'espace contigu dans la mémoire centrale--------------------------------------
-#include <stdio.h>
-#include <stdbool.h>
+
 
 // Fonction pour vérifier la disponibilité de blocs libres
 bool verifierEspaceLibre(BlocAllocation* allocation, int nombreBlocsRequis) {
@@ -351,60 +350,7 @@ scanf("%d",&choix);
                 break;
             case 4:
                 printf("Afficher les détails de la mémoire secondaire :\n");
-    afficherMS(disque) ;      
-    Bloc buffer;
-    rewind(disque);
-
-    printf("========== État de la Mémoire Secondaire ==========\n");
-
-    // Parcourir tous les blocs
-    for (int i = 0; i < 20; i++) {
-        fseek(disque, i * sizeof(Bloc), SEEK_SET);
-
-        if (fread(&buffer, sizeof(Bloc), 1, disque) != 1) {
-            printf("Bloc %d : Erreur : Impossible de lire le bloc. Bloc vide ou corrompu.\n", i);
-            continue;
-        }
-
-        printf("Bloc %d : ", i);
-
-        switch (buffer.typedebloc) {
-            case 1: // Bloc de métadonnées
-                printf("Bloc de métadonnées\n");
-                printf("  Nombre de fichiers : %d\n", buffer.content.metadataTable.nbrMetadonnees);
-                printf("  Next : %d\n", buffer.content.metadataTable.next);
-                for (int j = 0; j < buffer.content.metadataTable.nbrMetadonnees; j++) {
-                    printf("    Fichier %d : Adresse premier bloc = %d\n",
-                           j, buffer.content.metadataTable.T[j].Adrpremierbloc);
-                }
-                break;
-
-            case 2: // Bloc de données de fichier
-                printf("Bloc de données de fichier\n");
-                printf("  Nombre d'enregistrements : %d\n", buffer.content.fileData.nbrmaladie);
-                printf("  Next : %d\n", buffer.content.fileData.next);
-                break;
-
-            case 3: // Bloc de table d'allocation
-                printf("Bloc de table d'allocation\n");
-                printf("  Nombre total de blocs : %d\n", buffer.content.allocation.nbrbloc);
-                printf("  Nombre de blocs utilisés : %d\n", buffer.content.allocation.nbrblocutil);
-                for (int j = 0; j < buffer.content.allocation.nbrbloc; j++) {
-                    printf("    Bloc %d : %s\n", j,
-                           buffer.content.allocation.tablelocation[j].etat == 1 ? "Alloué" : "Libre");
-                }
-                break;
-
-            default: // Bloc vide ou type inconnu
-                printf("Erreur : Bloc ne contient aucun type valide.\n");
-                break;
-        }
-    }
-
-    printf("===================================================\n");
-}
-
-                
+                afficherEtatFichier( blocs, nbrBlocs, allocation);
                 break;
             case 5:
                 printf("Recherche d'enregistrement\n");
@@ -523,7 +469,6 @@ scanf("%d",&choix);
                 break;
             case 9:
                 printf("Suppression de fichier\n");
-                 printf("Création d'un fichier\n");
                 printf("Votre choix d'organisation globale: ");
                 scanf("%d", &modeG);
                 printf("Votre choix d'organisation interne: ");
@@ -560,16 +505,12 @@ scanf("%d",&choix);
                 break;
             case 11:
                 printf("Compactage de la mémoire secondaire\n");
-                // Affichage avant compactage
-                 printf("Avant compactage :\n");
-                 afficherEtatMemoire(/*latable dallocation*/);
-
-                  // Appeler la fonction de compactage
-                  compactMS();
+                // Appeler la fonction de compactage
+                compactage( blocs, nbrBlocs, allocation);
                 break;
             case 12:
                 printf("Mémoire secondaire vidée\n");
-               viderMS(disque, 20);
+                viderMS(disque, 20);
                 break;
             case  13:
                 printf("suppretion logique d'enregistrement");
