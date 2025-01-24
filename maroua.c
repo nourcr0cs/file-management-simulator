@@ -12,8 +12,8 @@
         int Taillefichierblocs;
         int Taillefichierenregistrements;
         int Adrpremierbloc; // Adresse du premier bloc
-        int Modeorganisationglobale; // Si = 0 alors chaîne
-        int Modeorganisationinterne; // Si = 0 alors ordonné
+        int Modeorganisationglobale; // Si = 0 alors cha�ne
+        int Modeorganisationinterne; // Si = 0 alors ordonn�
     } fichiermetadonnes;
 
     typedef struct {
@@ -23,13 +23,13 @@
         char sexe[10];
         char adresse[30];
         int nmbrdevisite;
-        int suprimelogiquement; // 1 si supprimé logiquement
+        int suprimelogiquement; // 1 si supprim� logiquement
     } maladie;
 
     typedef struct {
         maladie T[20]; // Facteur de blocage = 20
         int nbrmaladie;
-        int next; // Pour chaîner les blocs
+        int next; // Pour cha�ner les blocs
     } BlocData;
 
     typedef struct {
@@ -38,14 +38,14 @@
     } Tableallocation;
 
     typedef struct {
-        fichiermetadonnes T[20]; // Tableau de métadonnées
-        int nbrMetadonnees; // Nombre actuel de métadonnées dans ce bloc
-        int next; // Pour chaîner les blocs de métadonnées
+        fichiermetadonnes T[20]; // Tableau de m�tadonn�es
+        int nbrMetadonnees; // Nombre actuel de m�tadonn�es dans ce bloc
+        int next; // Pour cha�ner les blocs de m�tadonn�es
     } BlocMetadonnees;
 
     typedef struct {
         Tableallocation tablelocation[20];
-        int nbrblocutil; // Nombre de blocs utilisés
+        int nbrblocutil; // Nombre de blocs utilis�s
         int nbrbloc; // Nombre total de blocs
     } BlocAllocation;
 
@@ -66,7 +66,7 @@
         } content;
 
         int typedebloc;
-        // 1 = métadonnées, 2 = données de fichier, 3 = allocation
+        // 1 = m�tadonn�es, 2 = donn�es de fichier, 3 = allocation
     } Bloc;
 
 
@@ -74,7 +74,7 @@
 
 
     // Function to check if there is enough space for the requested number of blocks
-    bool verifierEspaceSuffisant(FILE* disque, int nbrBlocsVoulu) { 
+    bool verifierEspaceSuffisant(FILE* disque, int nbrBlocsVoulu) {
         Bloc buffer;
         rewind(disque);
         buffer.typedebloc=3;
@@ -89,11 +89,11 @@
         int blocsLibres = buffer.content.allocation.nbrbloc - buffer.content.allocation.nbrblocutil;
 
        if (nbrBlocsVoulu > blocsLibres) {
-           printf("Erreur : Espace insuffisant. %d blocs nécessaires, %d disponibles.\n", nbrBlocsVoulu,blocsLibres);
+           printf("Erreur : Espace insuffisant. %d blocs n�cessaires, %d disponibles.\n", nbrBlocsVoulu,blocsLibres);
            return false;
        }
 
-       printf("Succès : Il y a suffisamment d'espace. %d blocs disponibles.\n", blocsLibres);
+       printf("Succ�s : Il y a suffisamment d'espace. %d blocs disponibles.\n", blocsLibres);
        return true;
    }
 
@@ -112,12 +112,12 @@
        BlocAllocation* allocation = &buffer.content.allocation;
 
        switch (option) {
-           case 1: // Nombre de blocs utilisés
+           case 1: // Nombre de blocs utilis�s
                return allocation->nbrblocutil;
            case 2: // Nombre total de blocs
                return allocation->nbrbloc;
            default:
-               printf("Erreur : Option invalide. Utilisez 1 pour blocs utilisés ou 2 pour blocs totaux.\n");
+               printf("Erreur : Option invalide. Utilisez 1 pour blocs utilis�s ou 2 pour blocs totaux.\n");
                return -1; // Error indicator
        }
    }
@@ -169,7 +169,7 @@
        // Write the updated allocation table back to the first block
        fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
        if (fwrite(&buffer, sizeof(Bloc), 1, disque) != 1) {
-           printf("Erreur : Échec d'écriture dans le bloc 0.\n");
+           printf("Erreur : �chec d'�criture dans le bloc 0.\n");
            return;
        }
    }
@@ -196,7 +196,7 @@
        // Write the initial allocation table to the first block
        fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
        if (fwrite(&buffer, sizeof(Bloc), 1, disque) != 1) {
-           printf("Erreur : Échec d'écriture dans le bloc 0.\n");
+           printf("Erreur : �chec d'�criture dans le bloc 0.\n");
            return;
        }
 
@@ -208,19 +208,19 @@
 
    // Function to clear memory space by resetting block usage counts and allocation table
    void ViderMs(FILE* disque) {
-    Bloc buffer = {0}; // Initialiser un bloc vide (toutes valeurs à 0/null)
+    Bloc buffer = {0}; // Initialiser un bloc vide (toutes valeurs � 0/null)
     int nombreBlocs = obtenirNombreBlocs(disque, 2); // Obtenir le nombre total de blocs
 
-    // Parcourir tous les blocs et les réinitialiser
+    // Parcourir tous les blocs et les r�initialiser
     for (int i = 0; i < nombreBlocs; i++) {
         fseek(disque, i * sizeof(Bloc), SEEK_SET);
         if (fwrite(&buffer, sizeof(Bloc), 1, disque) != 1) {
-            printf("Erreur : Impossible de réinitialiser le bloc %d.\n", i);
+            printf("Erreur : Impossible de r�initialiser le bloc %d.\n", i);
             return;
         }
     }
 
-    printf("Tous les blocs ont été réinitialisés à NULL.\n");
+    printf("Tous les blocs ont �t� r�initialis�s � NULL.\n");
 }
 
 
@@ -237,15 +237,15 @@
 
        buffer.typedebloc=1;
 
-       // Initialisation des blocs 1 et 2 (métadonnées)
-       buffer.typedebloc = 1; // Bloc de métadonnées
+       // Initialisation des blocs 1 et 2 (m�tadonn�es)
+       buffer.typedebloc = 1; // Bloc de m�tadonn�es
        buffer.content.metadataTable.nbrMetadonnees = 0;
        buffer.content.metadataTable.next = 2;
 
 
        fseek(disque, 1 * sizeof(Bloc), SEEK_SET);
            if (fwrite(&buffer, sizeof(Bloc), 1, disque) != 1) {
-               printf("Erreur : Échec d'écriture dans le bloc %d.\n", 1);
+               printf("Erreur : �chec d'�criture dans le bloc %d.\n", 1);
                return;
            }
 
@@ -254,7 +254,7 @@
 
         fseek(disque, 2 * sizeof(Bloc), SEEK_SET);
            if (fwrite(&buffer, sizeof(Bloc), 1, disque) != 1) {
-               printf("Erreur : Échec d'écriture dans le bloc %d.\n", 2);
+               printf("Erreur : �chec d'�criture dans le bloc %d.\n", 2);
                return;
            }
 
@@ -285,7 +285,7 @@
               fseek(disque, blocactuelle * sizeof(Bloc), SEEK_SET);
               fwrite(&buffer,sizeof(Bloc),1,disque);
 
-              printf("Métadonnées ajoutées avec succès au bloc %d.\n", blocactuelle);
+              printf("M�tadonn�es ajout�es avec succ�s au bloc %d.\n", blocactuelle);
               return true;
           } else {
               blocactuelle = buffer.content.metadataTable.next;
@@ -299,10 +299,10 @@
    // Function to search for metadata by file name and return its address information.
    adressemetadonnes recherchemetadonnes(FILE* disque, const char* nomfichier) {
        Bloc buffer;
-       adressemetadonnes resultat = {-1, -1}; // Initialisation : non trouvé
-       int blocActuel = 1; // Commence par le premier bloc de métadonnées
+       adressemetadonnes resultat = {-1, -1}; // Initialisation : non trouv�
+       int blocActuel = 1; // Commence par le premier bloc de m�tadonn�es
 
-       // Parcours des blocs de métadonnées en chaîne
+       // Parcours des blocs de m�tadonn�es en cha�ne
        while (blocActuel != -1) {
            // Lecture du bloc actuel
            fseek(disque, blocActuel * sizeof(Bloc), SEEK_SET);
@@ -311,17 +311,17 @@
                break;
            }
 
-           // Vérifier si le bloc est un bloc de métadonnées
+           // V�rifier si le bloc est un bloc de m�tadonn�es
            if (buffer.typedebloc != 1) {
-               printf("Erreur : Le bloc %d n'est pas un bloc de métadonnées.\n", blocActuel);
+               printf("Erreur : Le bloc %d n'est pas un bloc de m�tadonn�es.\n", blocActuel);
                break;
            }
 
-           // Parcourir les métadonnées dans le bloc
+           // Parcourir les m�tadonn�es dans le bloc
            for (int j = 0; j < buffer.content.metadataTable.nbrMetadonnees; j++) {
                if (buffer.content.metadataTable.T[j].Nomdufichier[0] != '\0' &&
                    strcmp(buffer.content.metadataTable.T[j].Nomdufichier, nomfichier) == 0) {
-                   // Métadonnées trouvées
+                   // M�tadonn�es trouv�es
                    resultat.numerodebloc = blocActuel;
                    resultat.index = j;
                    return resultat;
@@ -332,8 +332,8 @@
            blocActuel = buffer.content.metadataTable.next;
        }
 
-       printf("Métadonnées non trouvées pour le fichier : %s\n", nomfichier);
-       return resultat; // Retourne {-1, -1} si non trouvé
+       printf("M�tadonn�es non trouv�es pour le fichier : %s\n", nomfichier);
+       return resultat; // Retourne {-1, -1} si non trouv�
    }
 
 
@@ -343,7 +343,7 @@
         adressemetadonnes adresse=recherchemetadonnes(disque ,nomFichier );
         rewind(disque);
 
-        if(adresse.numerodebloc==-1) { // Vérifier si le fichier existe
+        if(adresse.numerodebloc==-1) { // V�rifier si le fichier existe
             printf("Fichier introuvable\n");
             return -1; // Indicate error since file not found.
         }
@@ -365,7 +365,7 @@
                 return buffer.content.metadataTable.T[adresse.index].Modeorganisationinterne ;
 
             default:
-                printf("Caractéristique non trouvée\n");
+                printf("Caract�ristique non trouv�e\n");
                 return -1;
         }
    }
@@ -375,7 +375,7 @@
         adressemetadonnes adresse=recherchemetadonnes(disque ,nomFichier );
         rewind(disque);
         if(adresse.numerodebloc==-1){
-            printf("Fichier introuvable pour mise à jour des métadonnées.\n");
+            printf("Fichier introuvable pour mise � jour des m�tadonn�es.\n");
             return ;
         }
 
@@ -385,7 +385,7 @@
         fread(&buffer,sizeof(Bloc ),1 ,disque );
 
         if(buffer.typedebloc!=1){
-            printf("Erreur : Le bloc trouvé ne contient pas de métadonnées.\n");
+            printf("Erreur : Le bloc trouv� ne contient pas de m�tadonn�es.\n");
             return ;
         }
 
@@ -420,9 +420,10 @@
    char* creerfichierCO(FILE* disque){
         char* nomFichier=(char*)malloc(20*sizeof(char));
         if(!nomFichier){
-            printf("Erreur : Allocation de mémoire échouée.\n");
+            printf("Erreur : Allocation de memoire echoue.\n");
             return NULL;
         }
+        int Taillefichierenregistrements=0;
 
         fichiermetadonnes metadonnes;
         rewind(disque);
@@ -431,7 +432,7 @@
         scanf("%19s",metadonnes.Nomdufichier);
 
         printf("Donner la taille de fichier en enregistrement : \n");
-        scanf("%d",&metadonnes.Taillefichierenregistrements);
+        scanf("%d",&Taillefichierenregistrements);
 
         printf("Donner le mode d'organisation globale : \n");
         scanf("%d",&metadonnes.Modeorganisationglobale);
@@ -439,9 +440,10 @@
         printf("Donner le mode d'organisation interne : \n");
         scanf("%d",&metadonnes.Modeorganisationinterne);
 
-        int taille=ceil((double)metadonnes.Taillefichierenregistrements/20)+1;
+     int taille=Taillefichierenregistrements/20+(Taillefichierenregistrements%20!=0);
 
         metadonnes.Taillefichierblocs=taille;
+        metadonnes.Taillefichierenregistrements=0;
 
         if(!verifierEspaceSuffisant(disque ,taille)){
             free(nomFichier);
@@ -451,196 +453,281 @@
         bool succes=ajoutermetadonnes(disque ,metadonnes ,taille);
 
         if(succes){
-            printf("Le fichier '%s' a été créé avec succès.\n", metadonnes.Nomdufichier);
+            printf("Le fichier '%s' a ete cree avec succes.\n", metadonnes.Nomdufichier);
             strcpy(nomFichier ,metadonnes.Nomdufichier);
             return nomFichier;
         } else {
-            printf("Erreur : espace insuffisant pour créer le fichier '%s'.\n", metadonnes.Nomdufichier);
+            printf("Erreur : espace insuffisant pour creer le fichier '%s'.\n", metadonnes.Nomdufichier);
             free(nomFichier);
             return NULL;
         }
    }
- // allocation of blocs and do the chainage
+
    void chargerfichier(FILE* disque) {
 
        Bloc buffer;
        char* nomFichier;
        rewind(disque);
 
-       // Récupérer les métadonnées du fichier
+       // R�cup�rer les m�tadonn�es du fichier
        fichiermetadonnes metadonnes;
        nomFichier=creerfichierCO(disque);
-       adressemetadonnes adresse = recherchemetadonnes(disque, nomFichier);
-       int taille=liremetadonnes(disque,nomFichier,1);
-
-       if (adresse.numerodebloc == -1) {
-           printf("Fichier introuvable \n");
-           return;  // Le fichier n'a pas été trouvé
-       }
-        printf("Chargement des métadonnées du fichier : %s\n", nomFichier);
-       // Charger les métadonnées dans le buffer
-       fseek(disque, adresse.numerodebloc * sizeof(Bloc), SEEK_SET);
-       fread(&buffer, sizeof(Bloc), 1, disque);
-
-       if (buffer.typedebloc != 1) {
-           printf("Le bloc ne contient pas de métadonnées.\n");
-           return;
-       }
-
-       metadonnes = buffer.content.metadataTable.T[adresse.index];
-
-       int blocnecessaire = metadonnes.Taillefichierblocs;
-       int bloctrouve = 0; // Pour compter les blocs trouvés
+       int blocnecessaire = liremetadonnes(disque,nomFichier,1);
+       int bloctrouve = 0; // Pour compter les blocs trouv�s
        int adrPremierBloc = -1; // Variable pour stocker l'adresse du premier bloc
        int nbrbloctotal=obtenirNombreBlocs(disque,2);
        int nbrblocutiliser=obtenirNombreBlocs(disque,1);
-       // Lire la table d'allocation (stockée dans le premier bloc)
-       fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
-       fread(&buffer, sizeof(Bloc), 1, disque);
+       int blocPrecedent=-1;
+       int place=-1;
 
-       if (buffer.typedebloc != 3) {
-           printf("Le bloc d'allocation n'est pas valide.\n");
-           return;
-       }
 
-       // Allouer les blocs nécessaires
+
+
+       // Allouer les blocs n�cessaires
        for (int i = 0; i < nbrbloctotal && bloctrouve < blocnecessaire; i++) {
-       fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
-       fread(&buffer, sizeof(Bloc), 1, disque);
 
-       if (buffer.content.allocation.tablelocation[i].etat==0) {  // Si le bloc est vide
-               metajourtableallocation(disque, i, 1);  // Marquer le bloc comme utilisé
+           for (int j = 0; j < nbrbloctotal; j++) {
+            buffer.typedebloc=3;
+            fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
+            fread(&buffer, sizeof(Bloc), 1, disque);
+            if (buffer.content.allocation.tablelocation[j].etat == 0) {
+                place = j;
+                metajourtableallocation(disque,j,1);
 
-               // Enregistrer l'adresse du premier bloc alloué
-               if (adrPremierBloc == -1) {
-                   adrPremierBloc = i;
-               }else{
-               // Chaînage des blocs : mise à jour du champ "next" du bloc précédent
+                break;
+            }
+        }
+        if (place == -1) {
+            printf("Espace insuffisant pour inserer un nouvel enregistrement.\n");
+            return;
+        }
 
-                   fseek(disque, adrPremierBloc * sizeof(Bloc), SEEK_SET);
-                   fread(&buffer, sizeof(Bloc), 1, disque);
-                   buffer.content.fileData.next = i;
-                   fseek(disque, adrPremierBloc * sizeof(Bloc), SEEK_SET);
-                   fwrite(&buffer, sizeof(Bloc), 1, disque);
-               }
+    // Si c'est le premier bloc allou�
+    if (adrPremierBloc == -1) {
+        adrPremierBloc = place;
+        blocPrecedent=place;
+        fseek(disque, adrPremierBloc * sizeof(Bloc), SEEK_SET);
+        fread(&buffer, sizeof(Bloc), 1, disque);
+        buffer.content.fileData.next=-1;
+        buffer.typedebloc=2;
+        fseek(disque, adrPremierBloc * sizeof(Bloc), SEEK_SET);
+        fwrite(&buffer, sizeof(Bloc), 1, disque);
 
-               // Enregistrer l'adresse du bloc actuel pour le chaînage futur
-               adrPremierBloc = i;
-               bloctrouve++;
-           }
-       }
 
-       // Si les blocs nécessaires n'ont pas été trouvés
+    } else {
+        // Cha�nage des blocs : mise � jour du champ "next" du dernier bloc allou�
+
+        fseek(disque, blocPrecedent * sizeof(Bloc), SEEK_SET);
+        fread(&buffer, sizeof(Bloc), 1, disque);
+        buffer.content.fileData.next= place;  // Mise � jour du champ "next"
+        buffer.typedebloc=2;
+        fseek(disque, blocPrecedent * sizeof(Bloc), SEEK_SET);
+        fwrite(&buffer, sizeof(Bloc), 1, disque);
+        fseek(disque, place* sizeof(Bloc), SEEK_SET);
+        fread(&buffer, sizeof(Bloc), 1, disque);
+        buffer.typedebloc=2;
+        buffer.content.fileData.next=-1;
+        fseek(disque, place * sizeof(Bloc), SEEK_SET);
+        fwrite(&buffer, sizeof(Bloc), 1, disque);
+
+
+
+    }
+
+    // Enregistrer l'adresse du bloc actuel pour le cha�nage futur
+    blocPrecedent=place ;
+    bloctrouve++;
+}
+
+       // Si les blocs n�cessaires n'ont pas �t� trouv�s
 
        if (bloctrouve < blocnecessaire) {
-           printf("Espace insuffisant pour allouer tous les blocs nécessaires.\n");
+           printf("Espace insuffisant pour allouer tous les blocs necessaires.\n");
            return;
 
-           // Libération des blocs déjà alloués
+           // Lib�ration des blocs d�j� allou�s
            for (int i = 0; i < nbrbloctotal; i++) {
                if (buffer.content.allocation.tablelocation[i].etat == 1) {
                    metajourtableallocation(disque, i, 0);
-                   printf("Bloc %d libéré.\n", i);
+                   printf("Bloc %d libere.\n", i);
                }
            }
            return;
        }
 
-       // Mise à jour des métadonnées
+       // Mise � jour des m�tadonn�es
        miseAJourMetadonnees(disque, nomFichier, 3, adrPremierBloc);
-       mettreAJourNombreBlocs(disque,1,nbrblocutiliser+taille);
+       mettreAJourNombreBlocs(disque,1,nbrblocutiliser+blocnecessaire);
 
-       printf("Fichier chargé avec succès.\n");
+       printf("Fichier charge avec succes.\n");
    }
-// Recover spaced used by enregistrement deleted
-   void defragmentation(FILE *disque, const char *nomFichier) {
-       Bloc buffer;             // buffer pour charger les blocs
-       maladie temp[20];        // tableau temporaire pour réorganiser les enregistrements
-       int blocactuelle, blocsuivant; // pointeurs pour le bloc courant et suivant
-       int indexTemp = 0;       // indice pour remplir le tableau temporaire
-       int totalEnregistrements = 0; // compteur pour les enregistrements valides
-       int taillefichierblocs;  // nombre de blocs utilisés après défragmentation
-       rewind(disque);
 
-       // obtenir le premier bloc et le nombre total d'enregistrements
-       int debut = liremetadonnes(disque, nomFichier, 3);
-       if (debut == -1) {
-           printf("Erreur : Le fichier %s est introuvable.\n", nomFichier);
-           return;
-       }
+  void defragmentation(FILE *disque, const char *nomFichier) {
+    Bloc buffer;             // Buffer pour charger les blocs
+    maladie temp[20];        // Tableau temporaire pour r�organiser les enregistrements
+    int blocactuelle, blocsuivant; // Pointeurs pour le bloc courant et suivant
+    int indexTemp = 0;       // Indice pour remplir le tableau temporaire
+    int totalEnregistrements = 0; // Compteur pour les enregistrements valides
+    int taillefichierblocs;  // Nombre de blocs utilis�s apr�s d�fragmentation
+    rewind(disque);
 
-       totalEnregistrements = liremetadonnes(disque, nomFichier, 2); // nombre total d'enregistrements
-       if (totalEnregistrements == 0) {
-           printf("Le fichier %s est vide. Aucune défragmentation nécessaire.\n", nomFichier);
-           return;
-       }
+    // Obtenir le premier bloc et le nombre total d'enregistrements
+    int debut = liremetadonnes(disque, nomFichier, 3);
+    if (debut == -1) {
+        printf("Erreur : Le fichier %s est introuvable.\n", nomFichier);
+        return;
+    }
 
-       // parcourir tous les blocs pour collecter les enregistrements valides
-       blocactuelle = debut;
-       while (blocactuelle != -1) {
-          // charger le bloc courant
-           fseek(disque, blocactuelle * sizeof(Bloc), SEEK_SET);
-           fread(&buffer, sizeof(Bloc), 1, disque);
+    totalEnregistrements = liremetadonnes(disque, nomFichier, 2); // Nombre total d'enregistrements
+    if (totalEnregistrements == 0) {
+        printf("Le fichier %s est vide. Aucune defragmentation necessaire.\n", nomFichier);
+        return;
+    }
 
-           // collecter les enregistrements valides dans le tableau temporaire
-           for (int i = 0; i < buffer.content.fileData.nbrmaladie; i++) {
-               if (!buffer.content.fileData.T[i].suprimelogiquement) {
-                   temp[indexTemp++] = buffer.content.fileData.T[i];
-               }
-           }
+    // �tape 1 : Collecter tous les enregistrements valides
+    blocactuelle = debut;
+    while (blocactuelle != -1) {
+        // Charger le bloc courant
+        fseek(disque, blocactuelle * sizeof(Bloc), SEEK_SET);
+        if (fread(&buffer, sizeof(Bloc), 1, disque) != 1) {
+            printf("Erreur : Impossible de lire le bloc %d.\n", blocactuelle);
+            return;
+        }
 
-           blocactuelle = buffer.content.fileData.next; // passer au bloc suivant
-       }
+        // Collecter les enregistrements valides dans le tableau temporaire
+        for (int i = 0; i < buffer.content.fileData.nbrmaladie; i++) {
+            if (!buffer.content.fileData.T[i].suprimelogiquement) {
+                temp[indexTemp++] = buffer.content.fileData.T[i];
+            }
+        }
 
-       // calculer le nombre de blocs nécessaires
-       taillefichierblocs = (indexTemp + 20 - 1) / 20;
+        blocactuelle = buffer.content.fileData.next; // Passer au bloc suivant
+    }
 
-       // écriture des blocs avec les enregistrements valides
-       blocactuelle = debut;
-       indexTemp = 0;
-       for (int i = 0; i < taillefichierblocs; i++) {
-           // charger ou initialiser un bloc existant
-           fseek(disque, blocactuelle * sizeof(Bloc), SEEK_SET);
-           fread(&buffer, sizeof(Bloc), 1, disque);
+    // Calculer le nombre de blocs n�cessaires apr�s d�fragmentation
+    taillefichierblocs = (indexTemp + 20 - 1) / 20; // Diviser en arrondissant vers le haut
 
-           // remplir le bloc avec les enregistrements valides
-           int nbrEnregistrements = 0;
-           while (indexTemp < totalEnregistrements && nbrEnregistrements < 20) {
-               buffer.content.fileData.T[nbrEnregistrements++] = temp[indexTemp++];
-           }
-           buffer.content.fileData.nbrmaladie = nbrEnregistrements;
+    // �tape 2 : R��crire les enregistrements dans les blocs n�cessaires
+    blocactuelle = debut;
+    indexTemp = 0;
+    for (int i = 0; i < taillefichierblocs; i++) {
+        // Charger ou initialiser un bloc existant
+        fseek(disque, blocactuelle * sizeof(Bloc), SEEK_SET);
+        if (fread(&buffer, sizeof(Bloc), 1, disque) != 1) {
+            printf("Erreur : Impossible de lire le bloc %d.\n", blocactuelle);
+            return;
+        }
 
-           // gestion du chaînage
-           if (i == taillefichierblocs - 1) {
-               buffer.content.fileData.next = -1; // dernier bloc
-           } else {
-               blocsuivant = buffer.content.fileData.next; // conserver le chaînage
-           }
+        // Remplir le bloc avec les enregistrements valides
+        int nbrEnregistrements = 0;
+        while (indexTemp < totalEnregistrements && nbrEnregistrements < 20) {
+            buffer.content.fileData.T[nbrEnregistrements++] = temp[indexTemp++];
+        }
 
-           // ecrire le bloc mis à jour
-           fseek(disque, blocactuelle * sizeof(Bloc), SEEK_SET);
-           fwrite(&buffer, sizeof(Bloc), 1, disque);
+        buffer.content.fileData.nbrmaladie = nbrEnregistrements;
 
-           // passer au bloc suivant
-           blocactuelle = buffer.content.fileData.next;
-       }
+        // Gestion du cha�nage
+        if (i == taillefichierblocs - 1) {
+            buffer.content.fileData.next = -1; // Dernier bloc
+        } else {
+            blocsuivant = buffer.content.fileData.next; // Conserver le cha�nage
+        }
 
-       // libérer les blocs inutilisés dans la table d'allocation
-       while (blocactuelle != -1) {
-           fseek(disque, blocactuelle * sizeof(Bloc), SEEK_SET);
-           fread(&buffer, sizeof(Bloc), 1, disque);
+        // �crire le bloc mis � jour
+        fseek(disque, blocactuelle * sizeof(Bloc), SEEK_SET);
+        if (fwrite(&buffer, sizeof(Bloc), 1, disque) != 1) {
+            printf("Erreur : �chec d'�criture dans le bloc %d.\n", blocactuelle);
+            return;
+        }
 
-         metajourtableallocation(disque, blocactuelle, 0); // libérer le bloc
-           blocactuelle = buffer.content.fileData.next;
-       }
+        blocactuelle = buffer.content.fileData.next;
+    }
 
-       // mettre à jour les métadonnées
-       miseAJourMetadonnees(disque, nomFichier, 1, taillefichierblocs); // taille en blocs
-       miseAJourMetadonnees(disque, nomFichier, 2, totalEnregistrements); // nombre d'enregistrements
+    // �tape 3 : Lib�rer les blocs inutilis�s dans la table d'allocation
+    while (blocactuelle != -1) {
+        fseek(disque, blocactuelle * sizeof(Bloc), SEEK_SET);
+        if (fread(&buffer, sizeof(Bloc), 1, disque) != 1) {
+            printf("Erreur : Impossible de lire le bloc %d.\n", blocactuelle);
+            return;
+        }
 
-       printf("Défragmentation du fichier %s terminée avec succès.\n", nomFichier);
-       return;
-   }
+        // Lib�rer le bloc courant
+        metajourtableallocation(disque, blocactuelle, 0);
+
+        blocactuelle = buffer.content.fileData.next;
+    }
+
+    // �tape 4 : Mise � jour des m�tadonn�es
+    miseAJourMetadonnees(disque, nomFichier, 1, taillefichierblocs); // Taille en blocs
+    miseAJourMetadonnees(disque, nomFichier, 2, totalEnregistrements); // Nombre d'enregistrements
+
+    printf("Defragmentation du fichier %s terminee avec succes.\n", nomFichier);
+    return;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+void afficherEnregistrements(FILE* disque, const char* nomFichier) {
+    Bloc buffer;
+    int blocactuelle = liremetadonnes(disque, nomFichier, 3); // Adresse du premier bloc
+
+    if (blocactuelle == -1) {
+        printf("Erreur : Le fichier %s est introuvable.\n", nomFichier);
+        return;
+    }
+
+    printf("=== Contenu du fichier %s ===\n", nomFichier);
+
+    while (blocactuelle != -1) {
+        fseek(disque, blocactuelle * sizeof(Bloc), SEEK_SET);
+        if (fread(&buffer, sizeof(Bloc), 1, disque) != 1) {
+            printf("Erreur : Impossible de lire le bloc %d.\n", blocactuelle);
+            break;
+        }
+
+        if (buffer.typedebloc != 2) {
+            printf("Erreur : Le bloc %d n'est pas un bloc de donn�es.\n", blocactuelle);
+            break;
+        }
+
+        // Affichage des enregistrements dans le bloc actuel
+        for (int j = 0; j < buffer.content.fileData.nbrmaladie; j++) {
+            if (buffer.content.fileData.T[j].suprimelogiquement == 0) {
+                printf("ID: %d, Age: %d, Sexe: %s, Adresse: %s,Etat: %d\n",
+                        buffer.content.fileData.T[j].id,
+                        buffer.content.fileData.T[j].age,
+                        buffer.content.fileData.T[j].sexe,
+                        buffer.content.fileData.T[j].adresse,
+                        buffer.content.fileData.T[j].suprimelogiquement);
+            }
+        }
+
+        blocactuelle = buffer.content.fileData.next; // Passer au bloc suivant
+    }
+
+    printf("=== Fin du fichier ===\n");
+}
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -648,21 +735,21 @@
 
    Bloc buffer;
    maladie m; // maladie  qui en veux inserer
-   maladie enrdecale;// l'enregistrement qui va decalé vers le bloc suivant est aussi le derniere enregistrement dans le bloc ou on a trouver la position
-   maladie enr;// variable qui va engistré l'enregistrement qui va changer du bloc
+   maladie enrdecale;// l'enregistrement qui va decal� vers le bloc suivant est aussi le derniere enregistrement dans le bloc ou on a trouver la position
+   maladie enr;// variable qui va engistr� l'enregistrement qui va changer du bloc
    Bloc adressedubloc;//pour lire l'adresse de bloc
    int blocdernier;//adresse de derniere bloc
    int blocactuelle;
    int position=-1;
    bool decalage= false;
    rewind(disque);
+   int ID;
 
-
-   adressemetadonnes adresse = recherchemetadonnes(disque, nomFichier);
+    adressemetadonnes adresse = recherchemetadonnes(disque, nomFichier);
 
    int debut=liremetadonnes(disque,nomFichier,3);// adresse de 1 bloc
 
-   int nbrenregistrement=liremetadonnes(disque,nomFichier,2);// nombre total de enregistrement dans ce bloc
+   int nbrenregistrement=liremetadonnes(disque,nomFichier,2);// nombre total de enregistrement dans ce fichier
 
    int nbrbloc=liremetadonnes(disque,nomFichier,1);// nombre total de bloc
 
@@ -675,45 +762,48 @@
            return;
        }
 
-
-
-   defragmentation(disque,nomFichier);// pour recuperer les espaces inutiliser
-
    // mtnsaych compactage
 
    // verifier si il ya un espace pour un enregistrement  sinon on alouer un nouveaux bloc
 
 
-   bool allouer = (nbrenregistrement % 20 == 0);
+   bool allouer = false;
+   if(nbrbloc*20==nbrenregistrement){
+    allouer=true;
+   }else{allouer=false;}
 
    // verifier si il ya un decalge (insertion dans 1 bloc
 
-   blocdernier = debut;
+    blocactuelle= debut;
 
-   int maxIterations = 20; // Prevent infinite loops
-   int iterations = 0;
+   // verifier si il ya un decalge (insertion dans 1 bloc)
 
-   while (buffer.content.fileData.next != -1) {
-       if (++iterations > maxIterations) {
-           printf("Erreur : Boucle infinie détectée dans le chaînage.\n");
-           break;
-       }
-       fseek(disque, blocdernier * sizeof(Bloc), SEEK_SET);
-       if (fread(&buffer, sizeof(Bloc), 1, disque) != 1) {
-           printf("Erreur : Impossible de lire le bloc.\n");
-           break;
-       }
-       blocdernier = buffer.content.fileData.next;
-   }
+   // Parcourir les blocs jusqu'au dernier ou atteindre le nombre de blocs utilis�s
+   buffer.typedebloc=2;
+    for (int i = 0; i <nbrbloc ; i++) {
+        fseek(disque, blocactuelle * sizeof(Bloc), SEEK_SET);
+        if (fread(&buffer, sizeof(Bloc), 1, disque) != 1) {
+            printf("Erreur : Impossible de lire le bloc %d.\n", blocactuelle);
+            return -1; // Erreur
+        }
+
+        if (buffer.content.fileData.next == -1) {
+            blocdernier = blocactuelle; // Bloc final atteint
+            break;
+        }
+
+        blocactuelle = buffer.content.fileData.next;
+    }
+
 
 
    // lire le information de la  nouvelle maladie
 
    printf("ID : \n");
-   scanf("%s",& m.id);
+   scanf("%d",&m.id);
 
    printf("AGE : \n");
-   scanf("%s",& m.age);
+   scanf("%d",& m.age);
 
    printf("SEXE : \n");
    scanf("%s",& m.sexe);
@@ -724,31 +814,73 @@
    m.nmbrdevisite=1;
    m.suprimelogiquement = 0;
 
+
+
    //  cas 1 :si l'enregistrement pour inserer est le  1 enregistrement dans le fichier(fichier vide
 
-   if(nbrenregistrement==0)  {
-   printf("Insertion dans un fichier vide.\n");
-   fseek(disque, debut * sizeof(Bloc), SEEK_SET);
-   fread(&buffer, sizeof(Bloc), 1, disque);
+    if (nbrenregistrement == 0) {
+        printf("Insertion dans un fichier vide.\n");
+        fseek(disque, debut * sizeof(Bloc), SEEK_SET);
+        fread(&buffer, sizeof(Bloc), 1, disque);
+        buffer.typedebloc = 2;
+        buffer.content.fileData.T[0] = m;
+        buffer.content.fileData.nbrmaladie = 1;
+        // ecrire les changement
+        fseek(disque, debut * sizeof(Bloc), SEEK_SET);
+        fwrite(&buffer, sizeof(Bloc), 1, disque);
+        // mise a jour les metadonnes
+        miseAJourMetadonnees(disque, nomFichier, 2,1);
+        afficherEnregistrements(disque, nomFichier);
+        return;
+    }
 
+//cas insertionne dans 1 bloc
 
-   buffer.typedebloc=2;
-   buffer.content.fileData.T[0]=m;
-   buffer.content.fileData.nbrmaladie = 1;
-   buffer.content.fileData.next = -1;
+  if (nbrenregistrement < 20) {
+    printf("Insertion dans le 1er bloc.\n");
 
+    // Charger le bloc
+    fseek(disque, debut * sizeof(Bloc), SEEK_SET);
+    if (fread(&buffer, sizeof(Bloc), 1, disque) != 1) {
+        printf("Erreur : Impossible de lire le bloc %d.\n", debut);
+        return;
+    }
 
-   // ecrire les changement
+    // D�tecter la position exacte pour l'insertion
+    int position = buffer.content.fileData.nbrmaladie; // Par d�faut, ins�rer � la fin
+    for (int i = 0; i < buffer.content.fileData.nbrmaladie; i++) {
+        if (m.id < buffer.content.fileData.T[i].id) { // Crit�re : ID croissant
+            position = i;
+            break; // Trouv� la position correcte
+        }
+    }
 
-   fseek(disque, debut * sizeof(Bloc), SEEK_SET);
-   fwrite(&buffer, sizeof(Bloc), 1, disque);
+    printf("Position trouv�e pour l'insertion : %d\n", position);
 
-   // mise a jour les metadonnes
+    // D�caler les enregistrements � partir de la position trouv�e
+    for (int j = buffer.content.fileData.nbrmaladie; j > position; j--) {
+        buffer.content.fileData.T[j] = buffer.content.fileData.T[j - 1];
+    }
 
-   miseAJourMetadonnees(disque, nomFichier, 2,nbrenregistrement++);
+    // Ins�rer le nouvel enregistrement � la position correcte
+    buffer.content.fileData.T[position] = m;
+    buffer.content.fileData.nbrmaladie++;
 
-   return ;
-   }
+    // Mettre � jour les m�tadonn�es
+    miseAJourMetadonnees(disque, nomFichier, 2, nbrenregistrement + 1);
+
+    // �crire les changements dans le fichier disque
+    fseek(disque, debut * sizeof(Bloc), SEEK_SET);
+    if (fwrite(&buffer, sizeof(Bloc), 1, disque) != 1) {
+        printf("Erreur : Impossible d'�crire les modifications dans le bloc %d.\n", debut);
+        return;
+    }
+
+    printf("Insertion dans le 1er bloc effectu�e avec succ�s.\n");
+    afficherEnregistrements(disque, nomFichier); // Afficher les enregistrements pour validation
+    return;
+}
+
 
    // Chercher la position d'insertion
 
@@ -760,61 +892,46 @@
 
    // parcourir les bloc
 
-   while( (blocactuelle!=-1)  &&  (!positiontrouve) ){ // boucle pour chercher la position
+       while ((blocactuelle != -1) && (!positiontrouve)) {
+        fseek(disque, blocactuelle * sizeof(Bloc), SEEK_SET);
+        fread(&buffer, sizeof(Bloc), 1, disque);
+        for (int i = 0; i < buffer.content.fileData.nbrmaladie; i++) {
+            if (m.id < buffer.content.fileData.T[i].id) {
+                position = i;
+                positiontrouve = true;
+                decalage = true;
+                break;
+            }
+        }
+        if (!positiontrouve) {
+            blocactuelle = buffer.content.fileData.next;
+        }
+    }
 
-   fseek(disque, blocactuelle * sizeof(Bloc), SEEK_SET);
-   fread(&buffer, sizeof(Bloc), 1, disque);
-
-   for(int i=0;i<buffer.content.fileData.nbrmaladie-1;i++){
-
-   // comparer les id pour trouver la position
-
-   if(m.id<buffer.content.fileData.T[i].id){
-
-      position=i;
-      positiontrouve=true;
-      decalage = true; // Décalage nécessaire si l'insertion n'est pas à la fin
-
-      break;
-
-   }
-   }
-
-   if (!positiontrouve){
-           blocactuelle=buffer.content.fileData.next;}
-   }
-
-   //verifier si adresse de l'enregistrement est dans le bloc derniere
-
-   if(blocdernier==blocactuelle)
-   {
-       decalage=false;
-
-   }
-   else{decalage=true;}
+    if (blocdernier == blocactuelle) {
+        decalage = false;
+    } else {
+        decalage = true;
+    }
 
    // cas sans decalge sans allocation
    if (!decalage && !allouer) {
 
-            printf("Insertion dans un bloc existant sans décalage ni allocation.\n");
-
+            printf("Insertion dans le dernier bloc existant sans decalage inter bloc est sans  allocation.\n");
+            buffer.typedebloc=2;
            fseek(disque, blocdernier * sizeof(Bloc), SEEK_SET);
            fread(&buffer, sizeof(Bloc), 1, disque);
 
            for (int j = buffer.content.fileData.nbrmaladie; j > position; j--) {
-               buffer.content.fileData.T[j] = buffer.content.fileData.T[j - 1]; // Décalage
+               buffer.content.fileData.T[j] = buffer.content.fileData.T[j - 1]; // D�calage intra bloc
            }
-
            buffer.content.fileData.T[position] = m;
            buffer.content.fileData.nbrmaladie++;
-
-           // Écrire les changements
+           // �crire les changements
            fseek(disque, blocdernier * sizeof(Bloc), SEEK_SET);
            fwrite(&buffer, sizeof(Bloc), 1, disque);
-
-           printf("Insertion terminée avec succès.\n");
-
-           // Mise à jour des métadonnées
+           printf("Insertion termine avec succes.\n");
+           // Mise � jour des m�tadonn�es
            miseAJourMetadonnees(disque, nomFichier, 2, nbrenregistrement + 1);
 
            return;
@@ -824,100 +941,94 @@
 
    if(allouer&&!decalage){
 
-       printf("insertion dans le derniere bloc  sans allocation d'un nouveau bloc.\n");
+       printf("insertion dans le derniere bloc  avec allocation d'un nouveau bloc.\n");
 
            // Trouver un bloc libre pour l'allocation
            int place = -1;
            buffer.typedebloc=3;
            for (int i = 0; i < nbrbloctotal; i++) {
-               fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
-               fread(&buffer, sizeof(Bloc), 1, disque);
-               if (buffer.content.allocation.tablelocation[i].etat == 0) {
-                   place = i;
-                   break;
-               }
-           }
-
-           if (place == -1) {
-               printf("Espace insuffisant pour insérer un nouvel enregistrement.\n");
-               return;
-           }
+            fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
+            fread(&buffer, sizeof(Bloc), 1, disque);
+            if (buffer.content.allocation.tablelocation[i].etat == 0) {
+                place = i;
+                break;
+            }
+        }
+        if (place == -1) {
+            printf("Espace insuffisant pour inserer un nouvel enregistrement.\n");
+            return;
+        }
            buffer.typedebloc=2;
-           // Charger le dernier bloc pour récupérer l'enregistrement à décaler
+           // Charger le dernier bloc pour r�cup�rer l'enregistrement � d�caler
            fseek(disque, blocdernier * sizeof(Bloc), SEEK_SET);
            fread(&buffer, sizeof(Bloc), 1, disque);
 
-           enrdecale = buffer.content.fileData.T[buffer.content.fileData.nbrmaladie - 1]; // Dernier enregistrement du bloc
+           if(enrdecale.id>=m.id) {
+                enrdecale = buffer.content.fileData.T[buffer.content.fileData.nbrmaladie - 1]; // Dernier enregistrement du bloc
            for (int j = buffer.content.fileData.nbrmaladie - 1; j > position; j--) {
                buffer.content.fileData.T[j] = buffer.content.fileData.T[j - 1];
            }
 
-           buffer.content.fileData.T[position] = m; // Insérer le nouvel enregistrement
-           buffer.content.fileData.nbrmaladie++;   // Mettre à jour le nombre d'enregistrements
-           buffer.content.fileData.next = place; // Mettre à jour le chaînage
+           buffer.content.fileData.T[position] = m; // Ins�rer le nouvel enregistrement
+           buffer.content.fileData.nbrmaladie++;   // Mettre � jour le nombre d'enregistrements
+           buffer.content.fileData.next = place; // Mettre � jour le cha�nage
 
-           // Écrire les modifications dans le dernier bloc
+           // �crire les modifications dans le dernier bloc
 
            fseek(disque, blocdernier * sizeof(Bloc), SEEK_SET);
            fwrite(&buffer, sizeof(Bloc), 1, disque);
+           buffer.content.fileData.T[0] = enrdecale;
 
-           // Allouer un nouveau bloc pour le décalage
+          } else{
+               // Allouer un nouveau bloc pour le d�calage
            fseek(disque, place * sizeof(Bloc), SEEK_SET);
            fread(&buffer, sizeof(Bloc), 1, disque);
    //verifier si le eng que en va inserer et superieur au tous les eng alors il va inserer dans le bloc allouer sinon le derniere eng de dernier bloc il va sauter
-
-
-          if(enrdecale.id>=m.id) {
-           buffer.content.fileData.T[0] = enrdecale;
-
-          } else{buffer.content.fileData.T[0]=m;}
-          // Déplacer l'enregistrement décalé dans le nouveau bloc
+            buffer.content.fileData.T[0]=m;}
+          // D�placer l'enregistrement d�cal� dans le nouveau bloc
 
 
            buffer.content.fileData.nbrmaladie = 1;
            buffer.content.fileData.next = -1;
 
-           // Écrire le nouveau bloc
+           // �crire le nouveau bloc
            fseek(disque, place * sizeof(Bloc), SEEK_SET);
            fwrite(&buffer, sizeof(Bloc), 1, disque);
 
            buffer.typedebloc=3;
-           // Mettre à jour la table d'allocation et les métadonnées
+           // Mettre � jour la table d'allocation et les m�tadonn�es
            metajourtableallocation(disque, place, 1);
            miseAJourMetadonnees(disque, nomFichier, 3, nbrbloc + 1);
            mettreAJourNombreBlocs(disque, 1, nombrblocutil + 1);
 
-           printf("Décalage avec allocation effectué avec succès.\n");
+           printf("Decalage avec allocation effectue avec succes.\n");
            return;
        }
 
 
 
-   // cas avec decalage l'eng n'est pas dans le derniere bloc
+   // cas avec decalage l'insertion  n'est pas dans le derniere bloc
 
    if(decalage){
-   printf("Décalage intra-bloc sans allocation.\n");
+   printf("Decalage inter-bloc \n");
    buffer.typedebloc=2;
-   fseek(disque,blocactuelle* sizeof(Bloc), SEEK_SET); // charger le bloc suivant pour faire le decalage
+   fseek(disque,blocactuelle* sizeof(Bloc), SEEK_SET);
    fread(&buffer, sizeof(Bloc), 1, disque);
 
-   // buffer est chargé le bloc ou en va inserer
+   // buffer est charg� le bloc ou en va inserer
 
-   enrdecale=buffer.content.fileData.T[buffer.content.fileData.nbrmaladie-1];// l'enregistrement qui va decalé vers le bloc suivant est aussi le derniere enregistrement dans le bloc
+   enrdecale=buffer.content.fileData.T[buffer.content.fileData.nbrmaladie-1];// l'enregistrement qui va decal� vers le bloc suivant est aussi le derniere enregistrement dans le bloc
 
    //decaler les enregistrement dans  bloc ou en a trouver la position
 
-   for(int j=20-1;j>position;j--){ // fb-1 car le 1 index array est 0
-
-
+   for(int j=20-1;j>position;j--){ // fb-1 car le 1 index array est
    buffer.content.fileData.T[j] = buffer.content.fileData.T[j - 1]; // pour vider l'espace de position
-
    }
 
    buffer.content.fileData.T[position]=m;
-
+   buffer.typedebloc=1;
    miseAJourMetadonnees( disque,nomFichier, 2, nbrenregistrement++);
-
+   buffer.typedebloc=2;
    // ecrire les changement
 
    fseek(disque, blocactuelle * sizeof(Bloc), SEEK_SET);
@@ -937,23 +1048,20 @@
    fseek(disque, blocactuelle * sizeof(Bloc), SEEK_SET); // charger le bloc suivant pour faire le decalage
    fread(&buffer, sizeof(Bloc), 1, disque);
 
-   enr=buffer.content.fileData.T[buffer.content.fileData.nbrmaladie-1];// avant decalge en engistré le eng qui va sauter
+   enr=buffer.content.fileData.T[buffer.content.fileData.nbrmaladie-1];// avant decalge en engistr� le eng qui va sauter
 
      for(int i=20-1;i>0;i--) {// decaler pour vider la 1 case
-
-
        buffer.content.fileData.T[i]=buffer.content.fileData.T[i-1];
-
      }
 
      buffer.content.fileData.T[0]=enrdecale; // met le eng qui a sauter dans la 1 case
      enrdecale=enr;
-     // ecrire les modification de bloc actuelle avant de  passé a le bloc suivant
+     // ecrire les modification de bloc actuelle avant de  pass� a le bloc suivant
 
      fseek(disque, blocactuelle * sizeof(Bloc), SEEK_SET);
      fwrite(&buffer, sizeof(Bloc), 1, disque);
 
-     blocdernier=blocactuelle;//pour engistré l'adresse de dernier bloc
+     blocdernier=blocactuelle;//pour engistr� l'adresse de dernier bloc
      blocactuelle=buffer.content.fileData.next;
 
    }
@@ -966,7 +1074,7 @@
 
    // voir si il ya un  espace pour allouer un noveaux bloc
 
-   if (verifierEspaceSuffisant(disque,1)) { // Pas de blocs libres
+   if (!verifierEspaceSuffisant(disque,1)) { // Pas de blocs libres
 
       // verifier si il ya un bloc   vide
       printf(" Espace insuffisant pour insere l'enregistrement  !! \n"); // le cas de pas de espace dans la ms
@@ -1020,84 +1128,99 @@
 
    miseAJourMetadonnees( disque,nomFichier, 3, nbrbloc++);
    mettreAJourNombreBlocs(disque,1,nombrblocutil+1);
+   printf("insertion avec decalage est allocation avec succes ");
+   return;
 
-  }
+  }else{printf("insertion avec decalage est sans allocation avec succes ");
+  return;}
    }
-   return; // sortir car l 'insertion est faite
 
   }
 
 
-  adressemetadonnes rechercheebregistrement(FILE*disque,const char*nomFichier,int ID){
 
-  adressemetadonnes adressetrouve= {-1, -1} ;//adress d'enregistrement trouvé
+adressemetadonnes rechercheenregistrement(FILE* disque, const char* nomFichier, int ID) {
+    adressemetadonnes adressetrouve = {-1, -1}; // Initialisation � "non trouv�"
+    Bloc buffer;
+    int blocactuelle = liremetadonnes(disque, nomFichier, 3); // R�cup�rer l'adresse du premier bloc
 
-  Bloc buffer;
+    if (blocactuelle == -1) {
+        printf("Erreur : Le fichier %s est introuvable.\n", nomFichier);
+        return adressetrouve;
+    }
 
-  buffer.typedebloc=2;
+    while (blocactuelle != -1) {
+        fseek(disque, blocactuelle * sizeof(Bloc), SEEK_SET);
+        if (fread(&buffer, sizeof(Bloc), 1, disque) != 1) {
+            printf("Erreur : Impossible de lire le bloc %d.\n", blocactuelle);
+            break;
+        }
 
-  int blocactuelle;// pour parcourir les blocs
+        // V�rification que c'est un bloc de donn�es
+        if (buffer.typedebloc != 2) {
+            printf("Erreur : Le bloc %d n'est pas un bloc de donn�es.\n", blocactuelle);
+            break;
+        }
 
-  bool find=false;
-
-
-  adressemetadonnes adress=recherchemetadonnes(disque,nomFichier);
-
-    // Vérifiez si le fichier existe
-       if (adress.numerodebloc == -1) {
-           printf("Fichier introuvable : %s\n", nomFichier);
-           return adressetrouve;
-       }
-
-  blocactuelle=liremetadonnes(disque,nomFichier,3);// adresse de 1 bloc
-
-  int nbrenregistrement=liremetadonnes(disque,nomFichier,2);// nombre total de enregistrement dans ce fichier
-
-  int nbrbloc=liremetadonnes(disque,nomFichier,1);// nombre total de bloc
-
-  // Parcourir les blocs
-       while (blocactuelle != -1) {
-           fseek(disque, blocactuelle * sizeof(Bloc), SEEK_SET);
-           fread(&buffer, sizeof(Bloc), 1, disque);
-
-          // Vérifiez si le bloc est de type fichier (type 2)
-           if (buffer.typedebloc != 2) {
-               printf("Erreur : Bloc inattendu (type %d).\n", buffer.typedebloc);
-               return adressetrouve;
-           }
-
-  for(int i=blocactuelle;i<nbrbloc;i++){
-      fseek(disque, blocactuelle * sizeof(Bloc), SEEK_SET);// charger le bloc pur lire le tableau
-      fread(&buffer, sizeof(Bloc), 1, disque);
-
-     for(int j=0;j<buffer.content.fileData.nbrmaladie;j++) {
-
-         if (buffer.content.fileData.T[j].id==ID){
-
-                adressetrouve.numerodebloc=i;
-                adressetrouve.index=j;
-                find=true;
+        // Parcourir les enregistrements du bloc
+        for (int j = 0; j < buffer.content.fileData.nbrmaladie; j++) {
+            if (buffer.content.fileData.T[j].suprimelogiquement == 0 && buffer.content.fileData.T[j].id == ID) {
+                adressetrouve.numerodebloc = blocactuelle;
+                adressetrouve.index = j;
+                printf("Enregistrement trouv� dans le bloc %d, index %d.\n", blocactuelle, j);
                 return adressetrouve;
+            }
+        }
 
-         }
+        blocactuelle = buffer.content.fileData.next; // Passer au bloc suivant
+    }
 
-     }
-
-     blocactuelle=buffer.content.fileData.next;
-
-
-  }
-   }
-
-  if(find==false){
-       printf("l’enregistrement recherché n’existe pas.");
-   }
-
-  return adressetrouve;
-   }
+    printf("Enregistrement avec ID %d introuvable dans le fichier %s.\n", ID, nomFichier);
+    return adressetrouve; // Retourne {-1, -1} si l'enregistrement n'est pas trouv�
+}
 
 
-  void  suprimerenregistrement(FILE*disque,const char*nomFichier,int ID) {
+
+   void supprimerEnregistrementLogique(FILE *disque, const char *nomFichier, int ID) {
+    // Structure pour stocker les donn�es
+    Bloc buffer;
+
+    // Rechercher l'enregistrement par son ID
+    adressemetadonnes adresse = rechercheenregistrement(disque, nomFichier, ID);
+
+    // V�rifier si l'enregistrement existe
+    if (adresse.numerodebloc == -1) {
+        printf("Erreur : Enregistrement avec ID %d introuvable dans le fichier %s.\n", ID, nomFichier);
+        return;
+    }
+
+    // Charger le bloc contenant l'enregistrement
+    fseek(disque, adresse.numerodebloc * sizeof(Bloc), SEEK_SET);
+    if (fread(&buffer, sizeof(Bloc), 1, disque) != 1) {
+        printf("Erreur : Impossible de lire le bloc %d.\n", adresse.numerodebloc);
+        return;
+    }
+
+    // Modifier l'�tat de l'enregistrement pour le marquer comme supprim�
+    buffer.content.fileData.T[adresse.index].suprimelogiquement = 1;
+
+    // �crire les modifications dans le fichier disque
+    fseek(disque, adresse.numerodebloc * sizeof(Bloc), SEEK_SET);
+    if (fwrite(&buffer, sizeof(Bloc), 1, disque) != 1) {
+        printf("Erreur : �chec de l'�criture dans le bloc %d.\n", adresse.numerodebloc);
+        return;
+    }
+
+    // Confirmation de suppression
+    printf("L'enregistrement avec ID %d a �t� supprim� logiquement du fichier %s.\n", ID, nomFichier);
+}
+
+
+
+
+
+
+  void  suprimerenregistrementphisique(FILE*disque,const char*nomFichier,int ID) {
 
        Bloc buffer;
         rewind(disque);
@@ -1107,9 +1230,9 @@
        bool blocvide=false;//si apres decalage le dernier bloc est vide
        int blocactuelle=-1;
        int blocprecedent=-1;//pour la supression avec decalge pour revenir dans le decalage
-       maladie m;// pour faire engistré les enregistrement qui va changer apres decalage
+       maladie m;// pour faire engistr� les enregistrement qui va changer apres decalage
 
-      adressemetadonnes adresse=rechercheebregistrement(disque,nomFichier,ID);
+       adressemetadonnes adresse=rechercheenregistrement(disque,nomFichier,ID);
 
        if (adresse.numerodebloc == -1) {
            printf("Enregistrement introuvable : ID %d dans le fichier %s.\n", ID, nomFichier);
@@ -1119,7 +1242,7 @@
       adressemetadonnes meta=recherchemetadonnes(disque,nomFichier);//recuperer l'adresse de metadonnes pour met a jour
 
       if (meta.numerodebloc == -1) {
-           printf("Métadonnées introuvables pour le fichier : %s\n", nomFichier);
+           printf("M�tadonn�es introuvables pour le fichier : %s\n", nomFichier);
            return;
        }
    int nbrenregistrement=liremetadonnes(disque,nomFichier,2);// nombre total de enregistrement dans ce fichier
@@ -1129,40 +1252,7 @@
        int nbrblocutil=obtenirNombreBlocs(disque,1);
 
 
-    // Obtenir le choix de suppression
-       do {
-           printf("Quel type de suppression voulez-vous effectuer ?\n");
-           printf("1. Suppression logique\n");
-           printf("2. Suppression physique\n");
-           printf("Entrez votre choix (1 ou 2) : ");
-           if (scanf("%d", &choixSuppression) != 1 || (choixSuppression != 1 && choixSuppression != 2)) {
-               printf("Choix invalide. Veuillez entrer 1 ou 2.\n");
-               while (getchar() != '\n'); // Vider le buffer en cas d'entrée non valide
-           }
-       } while (choixSuppression != 1 && choixSuppression != 2);
 
-      // confirmé le choix
-       if (choixSuppression == 1) {
-          printf("Vous avez choisi la suppression logique.\n");
-       } else if (choixSuppression == 2) {
-           printf("Vous avez choisi la suppression physique.\n");
-       }
-
-  if(choixSuppression==1)
-   {
-   printf("Vous avez choisi la suppression logique.\n");
-   fseek(disque, adresse.numerodebloc * sizeof(Bloc), SEEK_SET);// charger le 1 bloc pour chercher l'adresse de derniere bloc
-   fread(&buffer, sizeof(Bloc), 1, disque);
-
-  buffer.content.fileData.T[adresse.index].suprimelogiquement=1;
-
-  fseek(disque, adresse.numerodebloc * sizeof(Bloc), SEEK_SET);// engistré les changement
-   fwrite(&buffer, sizeof(Bloc), 1, disque);
-
-  printf("Suppression logique effectuée pour l'enregistrement ID %d.\n", ID);
-           return;
-
-  }
 
   // supression phisique
 
@@ -1173,7 +1263,7 @@
   dernierbloc=debut;
 
   while(dernierbloc!=-1){
-      fseek(disque, dernierbloc * sizeof(Bloc), SEEK_SET);// charger le bloc pour pointé sur bloc suivant
+      fseek(disque, dernierbloc * sizeof(Bloc), SEEK_SET);// charger le bloc pour point� sur bloc suivant
       fread(&buffer, sizeof(Bloc), 1, disque);
       if (buffer.content.fileData.next == -1) break;
       dernierbloc=buffer.content.fileData.next;
@@ -1203,7 +1293,7 @@
    fseek(disque, dernierbloc * sizeof(Bloc), SEEK_SET);// charger le derniere bloc
    fread(&buffer, sizeof(Bloc), 1, disque);
 
-  // Décaler les éléments vers la gauche à partir de l'index
+  // D�caler les �l�ments vers la gauche � partir de l'index
       for (int i = adresse.index; i < (buffer.content.fileData.nbrmaladie) - 1; i++) {
            buffer.content.fileData.T[i] = buffer.content.fileData.T[i + 1];
        }
@@ -1242,17 +1332,17 @@
 
   if(decalage==true ){
    blocactuelle = adresse.numerodebloc;
-   fseek(disque,  blocactuelle* sizeof(Bloc), SEEK_SET);// charger le bloc ou on va suprimé
+   fseek(disque,  blocactuelle* sizeof(Bloc), SEEK_SET);// charger le bloc ou on va suprim�
    fread(&buffer, sizeof(Bloc), 1, disque);
 
   // faire la supression
 
-  // Décaler les éléments vers la gauche à partir de l'index
+  // D�caler les �l�ments vers la gauche � partir de l'index
        for (int i = adresse.index; i < (buffer.content.fileData.nbrmaladie) - 1; i++) {
            buffer.content.fileData.T[i] = buffer.content.fileData.T[i + 1];
        }
 
-      fseek(disque, debut * sizeof(Bloc), SEEK_SET); // engistré les modification apres changement de chainage
+      fseek(disque, debut * sizeof(Bloc), SEEK_SET); // engistr� les modification apres changement de chainage
        fwrite(&buffer, sizeof(Bloc), 1, disque);
 
       miseAJourMetadonnees(disque, nomFichier, 2,nbrenregistrement--);//mise a jour metadonnes
@@ -1262,7 +1352,7 @@
   blocprecedent=adresse.numerodebloc;
    blocactuelle=buffer.content.fileData.next;
 
-  while(buffer.content.fileData.next!=-1) // pour ne entré pas dans le derniere bloc pour deviser les cas
+  while(buffer.content.fileData.next!=-1) // pour ne entr� pas dans le derniere bloc pour deviser les cas
    {
 
   fseek(disque,blocactuelle* sizeof(Bloc), SEEK_SET);// charger le bloc suivante
@@ -1270,19 +1360,19 @@
 
   m=buffer.content.fileData.T[0];// le premiere enregistrement il rementera au bloc precedent
 
-  for (int i = 0; i < (buffer.content.fileData.nbrmaladie) - 1; i++) { // fait le decalge parceque le premiere eng est l'element a ete suprimé qui va rementre au bloc precedent
+  for (int i = 0; i < (buffer.content.fileData.nbrmaladie) - 1; i++) { // fait le decalge parceque le premiere eng est l'element a ete suprim� qui va rementre au bloc precedent
            buffer.content.fileData.T[i] = buffer.content.fileData.T[i + 1];
        }
 
   fseek(disque,blocactuelle* sizeof(Bloc), SEEK_SET);// charger le bloc suivante
-   fwrite(&buffer, sizeof(Bloc), 1, disque);//pour engitré les changement
+   fwrite(&buffer, sizeof(Bloc), 1, disque);//pour engitr� les changement
 
   fseek(disque,blocprecedent* sizeof(Bloc), SEEK_SET);// charger le bloc suivante  pour remplir le derniere eng qui est vide apres le decalge
    fread(&buffer, sizeof(Bloc), 1, disque);
 
   buffer.content.fileData.T[buffer.content.fileData.nbrmaladie-1]=m;// le premiere enr de bloc actuelle dans derniere eng de bloc precedent
 
-  fseek(disque, blocprecedent * sizeof(Bloc), SEEK_SET); // engistré les modification apres decalage vers la gauche
+  fseek(disque, blocprecedent * sizeof(Bloc), SEEK_SET); // engistr� les modification apres decalage vers la gauche
    fwrite(&buffer, sizeof(Bloc), 1, disque);
 
    blocprecedent=blocactuelle;
@@ -1291,8 +1381,8 @@
   }
 
 
-  // etrer dans le derniere bloc pour engistré le 1 eng qui va chargé dans le bloc precedent
-   fseek(disque,blocactuelle* sizeof(Bloc), SEEK_SET);// car la boucle a    eté arreter  dans le derniere bloc
+  // etrer dans le derniere bloc pour engistr� le 1 eng qui va charg� dans le bloc precedent
+   fseek(disque,blocactuelle* sizeof(Bloc), SEEK_SET);// car la boucle a    et� arreter  dans le derniere bloc
    fread(&buffer, sizeof(Bloc), 1, disque);
 
    m=buffer.content.fileData.T[0];
@@ -1304,7 +1394,7 @@
 
   // ecrire les changement
 
-  fseek(disque, blocprecedent * sizeof(Bloc), SEEK_SET); // engistré les modification apres decalage
+  fseek(disque, blocprecedent * sizeof(Bloc), SEEK_SET); // engistr� les modification apres decalage
    fwrite(&buffer, sizeof(Bloc), 1, disque);
    }
 
@@ -1317,7 +1407,7 @@
 
   buffer.content.fileData.next=-1;  // psq je suis dans l'avant derniere
 
-  fseek(disque, blocprecedent * sizeof(Bloc), SEEK_SET); // engistré les modification de chainage
+  fseek(disque, blocprecedent * sizeof(Bloc), SEEK_SET); // engistr� les modification de chainage
    fwrite(&buffer, sizeof(Bloc), 1, disque);
 
 
@@ -1325,7 +1415,7 @@
    miseAJourMetadonnees(disque, nomFichier, 2,nbrbloc--);//mise a jour taille en bloc
    mettreAJourNombreBlocs(disque,1,nbrblocutil-1);
 
-  printf("Suppression physique effectuée pour l'enregistrement ID %d.\n", ID);
+  printf("Suppression physique effectu�e pour l'enregistrement ID %d.\n", ID);
 
   return;
    }
@@ -1338,14 +1428,14 @@
 
   m=buffer.content.fileData.T[0];
 
-  for (int i = 0; i < (buffer.content.fileData.nbrmaladie) - 1; i++) { // fait le decalge pparceque le premiere est l'element a ete suprimé
+  for (int i = 0; i < (buffer.content.fileData.nbrmaladie) - 1; i++) { // fait le decalge pparceque le premiere est l'element a ete suprim�
            buffer.content.fileData.T[i] = buffer.content.fileData.T[i + 1];
        }
 
   buffer.content.fileData.nbrmaladie--;
 
   fseek(disque, blocactuelle * sizeof(Bloc), SEEK_SET);
-// engistré les modification apres le dernier decalage
+// engistr� les modification apres le dernier decalage
    fwrite(&buffer, sizeof(Bloc), 1, disque);
 
   fseek(disque,blocprecedent* sizeof(Bloc), SEEK_SET);// pour met le 1 eng de bloc  dernier dans l'avant derniere bloc dans derniere place
@@ -1353,10 +1443,10 @@
 
   buffer.content.fileData.T[buffer.content.fileData.nbrmaladie-1]=m;
 
-  fseek(disque,blocprecedent* sizeof(Bloc), SEEK_SET);// engistré les modification
+  fseek(disque,blocprecedent* sizeof(Bloc), SEEK_SET);// engistr� les modification
    fwrite(&buffer, sizeof(Bloc), 1, disque);
 
-  printf("Suppression physique effectuée pour l'enregistrement ID %d.\n", ID);
+  printf("Suppression physique effectu�e pour l'enregistrement ID %d.\n", ID);
 
   return;
 
@@ -1385,7 +1475,7 @@
 
 
 
-  // engistré les modification
+  // engistr� les modification
        fseek(disque, adress.numerodebloc * sizeof(Bloc), SEEK_SET);
        fwrite(&buffer, sizeof(Bloc), 1, disque);
 
@@ -1398,22 +1488,22 @@
 
   void suprimerFCO(FILE* disque, const char* nomFichier) {
        Bloc buffer;
-       int dernierblocmeta = 1; // Dernier bloc de métadonnées
+       int dernierblocmeta = 1; // Dernier bloc de m�tadonn�es
        int blocprecedent = -1;
        fichiermetadonnes dernierengmeta;
-       int nbrbloc = liremetadonnes(disque, nomFichier, 1); // Nombre de blocs utilisés par le fichier
+       int nbrbloc = liremetadonnes(disque, nomFichier, 1); // Nombre de blocs utilis�s par le fichier
        int adrpremierbloc = liremetadonnes(disque, nomFichier, 3); // Adresse du premier bloc du fichier
-       int nbrblocutil = obtenirNombreBlocs(disque, 1); // Nombre total de blocs utilisés
-       bool vide = false; // Indicateur pour savoir si le dernier bloc sera vide après suppression
+       int nbrblocutil = obtenirNombreBlocs(disque, 1); // Nombre total de blocs utilis�s
+       bool vide = false; // Indicateur pour savoir si le dernier bloc sera vide apr�s suppression
 
       adressemetadonnes adress = recherchemetadonnes(disque, nomFichier);
 
       if (adress.numerodebloc == -1) {
-           printf("Erreur : Métadonnées non trouvées pour le fichier : %s\n", nomFichier);
+           printf("Erreur : M�tadonn�es non trouv�es pour le fichier : %s\n", nomFichier);
            return;
        }
 
-      // Chercher l'adresse du dernier bloc qui stocke les métadonnées
+      // Chercher l'adresse du dernier bloc qui stocke les m�tadonn�es
        while (1) {
            fseek(disque, dernierblocmeta * sizeof(Bloc), SEEK_SET);
            if (fread(&buffer, sizeof(Bloc), 1, disque) != 1) {
@@ -1422,7 +1512,7 @@
            }
 
           if (buffer.typedebloc != 1) {
-               printf("Erreur : Le bloc %d n'est pas un bloc de métadonnées.\n", dernierblocmeta);
+               printf("Erreur : Le bloc %d n'est pas un bloc de m�tadonn�es.\n", dernierblocmeta);
                return;
            }
 
@@ -1433,12 +1523,12 @@
            dernierblocmeta = buffer.content.metadataTable.next;
        }
 
-      // Vérifier si le dernier bloc sera vide après suppression
+      // V�rifier si le dernier bloc sera vide apr�s suppression
        if (buffer.content.metadataTable.nbrMetadonnees == 1) {
            vide = true;
        }
 
-      // Supprimer la métadonnée et effectuer le décalage
+      // Supprimer la m�tadonn�e et effectuer le d�calage
        fseek(disque, adress.numerodebloc * sizeof(Bloc), SEEK_SET);
        if (fread(&buffer, sizeof(Bloc), 1, disque) != 1) {
            printf("Erreur : Impossible de lire le bloc %d.\n", adress.numerodebloc);
@@ -1449,9 +1539,9 @@
            buffer.content.metadataTable.T[i] = buffer.content.metadataTable.T[i + 1];
        }
 
-      buffer.content.metadataTable.nbrMetadonnees--; // Réduire le nombre de métadonnées
+      buffer.content.metadataTable.nbrMetadonnees--; // R�duire le nombre de m�tadonn�es
 
-      // Si le dernier bloc devient vide, le libérer
+      // Si le dernier bloc devient vide, le lib�rer
        if (vide) {
            if (blocprecedent != -1) {
                fseek(disque, blocprecedent * sizeof(Bloc), SEEK_SET);
@@ -1460,37 +1550,37 @@
                    return;
                }
 
-              buffer.content.metadataTable.next = -1; // Mettre à jour le pointeur du bloc précédent
+              buffer.content.metadataTable.next = -1; // Mettre � jour le pointeur du bloc pr�c�dent
 
               fseek(disque, blocprecedent * sizeof(Bloc), SEEK_SET);
                if (fwrite(&buffer, sizeof(Bloc), 1, disque) != 1) {
-                   printf("Erreur : Échec de l'écriture dans le bloc %d.\n", blocprecedent);
+                   printf("Erreur : �chec de l'�criture dans le bloc %d.\n", blocprecedent);
                    return;
                }
            }
 
-          // Libérer le dernier bloc
+          // Lib�rer le dernier bloc
            memset(&buffer, 0, sizeof(Bloc));
-           buffer.typedebloc = 0; // Bloc inutilisé
+           buffer.typedebloc = 0; // Bloc inutilis�
            fseek(disque, dernierblocmeta * sizeof(Bloc), SEEK_SET);
            if (fwrite(&buffer, sizeof(Bloc), 1, disque) != 1) {
-               printf("Erreur : Échec de l'écriture dans le bloc %d.\n", dernierblocmeta);
+               printf("Erreur : �chec de l'�criture dans le bloc %d.\n", dernierblocmeta);
                return;
            }
 
-          metajourtableallocation(disque, dernierblocmeta, 0); // Libérer le dernier bloc
+          metajourtableallocation(disque, dernierblocmeta, 0); // Lib�rer le dernier bloc
            mettreAJourNombreBlocs(disque, 1, nbrblocutil - 1);
        } else {
-           // Réécrire le bloc avec le décalage
+           // R��crire le bloc avec le d�calage
            fseek(disque, adress.numerodebloc * sizeof(Bloc), SEEK_SET);
            if (fwrite(&buffer, sizeof(Bloc), 1, disque) != 1) {
-               printf("Erreur : Échec de l'écriture dans le bloc %d.\n", adress.numerodebloc);
+               printf("Erreur : �chec de l'�criture dans le bloc %d.\n", adress.numerodebloc);
                return;
            }
 
        }
 
-      // Libérer les blocs de données du fichier
+      // Lib�rer les blocs de donn�es du fichier
        int blocActuel = adrpremierbloc;
        while (blocActuel != -1) {
            fseek(disque, blocActuel * sizeof(Bloc), SEEK_SET);
@@ -1501,21 +1591,21 @@
 
           int blocSuivant = buffer.content.fileData.next; // Adresse du bloc suivant
            memset(&buffer, 0, sizeof(Bloc));               // Vider le contenu du bloc
-           buffer.typedebloc = 0;                          // Bloc inutilisé
+           buffer.typedebloc = 0;                          // Bloc inutilis�
            fseek(disque, blocActuel * sizeof(Bloc), SEEK_SET);
            if (fwrite(&buffer, sizeof(Bloc), 1, disque) != 1) {
-               printf("Erreur : Échec de l'écriture dans le bloc %d.\n", blocActuel);
+               printf("Erreur : �chec de l'�criture dans le bloc %d.\n", blocActuel);
                return;
            }
 
-          metajourtableallocation(disque, blocActuel, 0); // Libérer le bloc
+          metajourtableallocation(disque, blocActuel, 0); // Lib�rer le bloc
            blocActuel = blocSuivant;
        }
 
-      // Mettre à jour le nombre de blocs utilisés
+      // Mettre � jour le nombre de blocs utilis�s
        mettreAJourNombreBlocs(disque, 1, nbrblocutil - nbrbloc);
 
-      printf("Fichier supprimé avec succès.\n");
+      printf("Fichier supprim� avec succ�s.\n");
        return;
    }
 
@@ -1524,7 +1614,7 @@
     Bloc buffer;
     rewind(disque);
 
-    printf("========== État de la Mémoire Secondaire ==========\n");
+    printf("========== �tat de la M�moire Secondaire ==========\n");
 
     // Parcourir tous les blocs
     for (int i = 0; i < 20; i++) {
@@ -1538,8 +1628,8 @@
         printf("Bloc %d : ", i);
 
         switch (buffer.typedebloc) {
-            case 1: // Bloc de métadonnées
-                printf("Bloc de métadonnées\n");
+            case 1: // Bloc de m�tadonn�es
+                printf("Bloc de m�tadonn�es\n");
                 printf("  Nombre de fichiers : %d\n", buffer.content.metadataTable.nbrMetadonnees);
                 printf("  Next : %d\n", buffer.content.metadataTable.next);
                 for (int j = 0; j < buffer.content.metadataTable.nbrMetadonnees; j++) {
@@ -1548,8 +1638,8 @@
                 }
                 break;
 
-            case 2: // Bloc de données de fichier
-                printf("Bloc de données de fichier\n");
+            case 2: // Bloc de donn�es de fichier
+                printf("Bloc de donn�es de fichier\n");
                 printf("  Nombre d'enregistrements : %d\n", buffer.content.fileData.nbrmaladie);
                 printf("  Next : %d\n", buffer.content.fileData.next);
                 break;
@@ -1557,10 +1647,10 @@
             case 3: // Bloc de table d'allocation
                 printf("Bloc de table d'allocation\n");
                 printf("  Nombre total de blocs : %d\n", buffer.content.allocation.nbrbloc);
-                printf("  Nombre de blocs utilisés : %d\n", buffer.content.allocation.nbrblocutil);
+                printf("  Nombre de blocs utilis�s : %d\n", buffer.content.allocation.nbrblocutil);
                 for (int j = 0; j < buffer.content.allocation.nbrbloc; j++) {
                     printf("    Bloc %d : %s\n", j,
-                           buffer.content.allocation.tablelocation[j].etat == 1 ? "Alloué" : "Libre");
+                           buffer.content.allocation.tablelocation[j].etat == 1 ? "Allou�" : "Libre");
                 }
                 break;
 
@@ -1583,29 +1673,29 @@
 
      printf("Program started successfully!\n");
 
-      FILE* disque = fopen("disque.bin", "r+b"); // Ouvrir le fichier pour lecture/écriture
+      FILE* disque = fopen("disque.bin", "r+b"); // Ouvrir le fichier pour lecture/�criture
        if (!disque) {
-           disque = fopen("disque.bin", "w+b"); // Créer le fichier s'il n'existe pas
+           disque = fopen("disque.bin", "w+b"); // Cr�er le fichier s'il n'existe pas
            if (!disque) {
-               printf("Erreur : Impossible de créer le fichier disque.bin.\n");
+               printf("Erreur : Impossible de cr�er le fichier disque.bin.\n");
                return 1;
            }
        }
 
     do {
-          printf("\n--- Gestion de la Mémoire Secondaire ---\n");
-           printf("1. Initialiser la mémoire secondaire\n");
-           printf("2. Créer un fichier\n");
-           printf("3. Afficher l'état de la mémoire secondaire\n");
-           printf("4. Afficher les métadonnées des fichiers\n");
+          printf("\n--- Gestion de la M�moire Secondaire ---\n");
+           printf("1. Initialiser la m�moire secondaire\n");
+           printf("2. Cr�er un fichier\n");
+           printf("3. Afficher l'�tat de la m�moire secondaire\n");
+           printf("4. Afficher les m�tadonn�es des fichiers\n");
            printf("5. Rechercher un enregistrement\n");
-           printf("6. Insérer un nouvel enregistrement\n");
+           printf("6. Ins�rer un nouvel enregistrement\n");
            printf("7. Supprimer un enregistrement\n");
-           printf("8. Défragmenter un fichier\n");
+           printf("8. D�fragmenter un fichier\n");
            printf("9. Supprimer un fichier\n");
            printf("10. Renommer un fichier\n");
-          printf("11. Compacter la mémoire secondaire\n");
-          printf("12. Vider la mémoire secondaire\n");
+          printf("11. Compacter la m�moire secondaire\n");
+          printf("12. Vider la m�moire secondaire\n");
            printf("0. Quitter\n");
            printf("Votre choix : ");
            scanf("%d", &choix);
@@ -1613,11 +1703,11 @@
           switch (choix) {
                case 1:
                    InitMs(disque, 20);
-                   printf("Mémoire secondaire initialisée avec succès.\n");
+                   printf("M�moire secondaire initialis�e avec succ�s.\n");
                    break;
 
               case 2:
-                   printf("Création d'un fichier\n");
+                   printf("Cr�ation d'un fichier\n");
                    printf("Votre choix d'organisation globale : ");
                    scanf("%d", &modeG);
                    printf("Votre choix d'organisation interne : ");
@@ -1626,28 +1716,24 @@
                    break;
 
               case 3:
-                   printf("Affichage de l'état de la mémoire secondaire :\n");
+                   printf("Affichage de l'�tat de la m�moire secondaire :\n");
                    afficherMS(disque);
                    break;
 
               case 4:
-                  printf("Affichage des métadonnées des fichiers :\n");
-                   // Ajouter une fonction pour afficher uniquement les métadonnées
+                  printf("Affichage des m�tadonn�es des fichiers :\n");
+                   // Ajouter une fonction pour afficher uniquement les m�tadonn�es
                    break;
 
               case 5:
                    printf("Recherche d'enregistrement\n");
                    printf("Entrez le nom du fichier : ");
                    scanf("%s", nomFichier);
-                   printf("Entrez l'ID de l'enregistrement à rechercher : ");
+                   printf("Entrez l'ID de l'enregistrement a rechercher : ");
                    scanf("%d", &ID);
-                   adressemetadonnes resultat = rechercheebregistrement(disque, nomFichier, ID);
-                   if (resultat.numerodebloc == -1) {
-                       printf("Enregistrement introuvable.\n");
-                   } else {
-                       printf("Enregistrement trouvé dans le bloc %d, index %d.\n",
-                              resultat.numerodebloc, resultat.index);
-                   }
+                    adressemetadonnes resultat=rechercheenregistrement(disque,nomFichier,ID);
+
+
                    break;
 
               case 6:
@@ -1661,21 +1747,26 @@
                    printf("Suppression d'enregistrement\n");
                    printf("Entrez le nom du fichier : ");
                    scanf("%s", nomFichier);
-                   printf("Entrez l'ID de l'enregistrement à supprimer : ");
+                   printf("Entrez l'ID de l'enregistrement � supprimer : ");
                    scanf("%d", &ID);
-                   suprimerenregistrement(disque, nomFichier, ID);
+
+                   supprimerEnregistrementLogique(disque,nomFichier,  ID);
+                    //suprimerenregistrementphisique(disque,nomFichier, ID);
+                   afficherEnregistrements(disque, nomFichier);
+
+
                    break;
 
               case 8:
-                   printf("Défragmentation d'un fichier\n");
-                   printf("Entrez le nom du fichier à défragmenter : ");
+                   printf("D�fragmentation d'un fichier\n");
+                   printf("Entrez le nom du fichier � d�fragmenter : ");
                    scanf("%s", nomFichier);
-                   // Appeler la fonction de défragmentation ici
+                   // Appeler la fonction de d�fragmentation ici
                    break;
 
               case 9:
                    printf("Suppression de fichier\n");
-                   printf("Entrez le nom du fichier à supprimer : ");
+                   printf("Entrez le nom du fichier � supprimer : ");
                    scanf("%s", nomFichier);
                    suprimerFCO(disque, nomFichier);
                    break;
@@ -1690,25 +1781,24 @@
                    break;
 
               case 11:
-                   printf("Compactage de la mémoire secondaire\n");
+                   printf("Compactage de la m�moire secondaire\n");
                    // Appeler la fonction de compactage ici
                    break;
 
               case 12:
-                   printf("Vidage de la mémoire secondaire\n");
+                   printf("Vidage de la m�moire secondaire\n");
                    // Appeler la fonction de vidage ici
                    ViderMs(disque);
                    break;
 
               case 0:
-                   printf("Programme terminé !\n");
+                   printf("Programme termin� !\n");
                   break;
 
               default:
-                   printf("Choix invalide. Veuillez réessayer.\n");
+                   printf("Choix invalide. Veuillez r�essayer.\n");
                   break;
            }
      } while (choix != 0);
      fclose(disque);
-      return 0;
-  }
+      return 0; }
