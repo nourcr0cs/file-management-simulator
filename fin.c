@@ -433,51 +433,7 @@
 
    // Function to create a new file and its associated metadata in the system.
    EMSCRIPTEN_KEEPALIVE
-   char* creerfichierCO(FILE* disque){
-        char* nomFichier=(char*)malloc(20*sizeof(char));
-        if(!nomFichier){
-            printf("Erreur : Allocation de memoire echoue.\n");
-            return NULL;
-        }
-        int Taillefichierenregistrements=0;
-
-        fichiermetadonnes metadonnes;
-        rewind(disque);
-
-        printf("Donner le nom du fichier : \n");
-        scanf("%19s",metadonnes.Nomdufichier);
-
-        printf("Donner la taille de fichier en enregistrement : \n");
-        scanf("%d",&Taillefichierenregistrements);
-
-        printf("Donner le mode d'organisation globale : \n");
-        scanf("%d",&metadonnes.Modeorganisationglobale);
-
-        printf("Donner le mode d'organisation interne : \n");
-        scanf("%d",&metadonnes.Modeorganisationinterne);
-
-     int taille=Taillefichierenregistrements/20+(Taillefichierenregistrements%20!=0);
-
-        metadonnes.Taillefichierblocs=taille;
-        metadonnes.Taillefichierenregistrements=0;
-
-        if(!verifierEspaceSuffisant(disque ,taille)){
-            free(nomFichier);
-            return NULL;
-        }
-
-        bool succes=ajoutermetadonnes(disque ,metadonnes ,taille);
-
-        if(succes){
-            printf("Le fichier '%s' a ete cree avec succes.\n", metadonnes.Nomdufichier);
-            strcpy(nomFichier ,metadonnes.Nomdufichier);
-            return nomFichier;
-        } else {
-            printf("Erreur : espace insuffisant pour creer le fichier '%s'.\n", metadonnes.Nomdufichier);
-            free(nomFichier);
-            return NULL;
-        }
-   }
+   
 
    EMSCRIPTEN_KEEPALIVE
     void chargerfichier(FILE* disque) {
@@ -577,6 +533,50 @@
        mettreAJourNombreBlocs(disque,1,nbrblocutiliser+blocnecessaire);
 
        printf("Fichier charge avec succes.\n");
+   }char* creerfichierCO(FILE* disque){
+        char* nomFichier=(char*)malloc(20*sizeof(char));
+        if(!nomFichier){
+            printf("Erreur : Allocation de memoire echoue.\n");
+            return NULL;
+        }
+        int Taillefichierenregistrements=0;
+
+        fichiermetadonnes metadonnes;
+        rewind(disque);
+
+        printf("Donner le nom du fichier : \n");
+        scanf("%19s",metadonnes.Nomdufichier);
+
+        printf("Donner la taille de fichier en enregistrement : \n");
+        scanf("%d",&Taillefichierenregistrements);
+
+        printf("Donner le mode d'organisation globale : \n");
+        scanf("%d",&metadonnes.Modeorganisationglobale);
+
+        printf("Donner le mode d'organisation interne : \n");
+        scanf("%d",&metadonnes.Modeorganisationinterne);
+
+     int taille=Taillefichierenregistrements/20+(Taillefichierenregistrements%20!=0);
+
+        metadonnes.Taillefichierblocs=taille;
+        metadonnes.Taillefichierenregistrements=0;
+
+        if(!verifierEspaceSuffisant(disque ,taille)){
+            free(nomFichier);
+            return NULL;
+        }
+
+        bool succes=ajoutermetadonnes(disque ,metadonnes ,taille);
+
+        if(succes){
+            printf("Le fichier '%s' a ete cree avec succes.\n", metadonnes.Nomdufichier);
+            strcpy(nomFichier ,metadonnes.Nomdufichier);
+            return nomFichier;
+        } else {
+            printf("Erreur : espace insuffisant pour creer le fichier '%s'.\n", metadonnes.Nomdufichier);
+            free(nomFichier);
+            return NULL;
+        }
    }
 
    EMSCRIPTEN_KEEPALIVE
@@ -1637,16 +1637,31 @@ adressemetadonnes rechercheenregistrement(FILE* disque, const char* nomFichier, 
 
 
     EMSCRIPTEN_KEEPALIVE
-void creationL_OF(FILE *disque, int nbrbloc) {
+EMSCRIPTEN_KEEPALIVE
+void creationL_OF(FILE *disque) {
     Bloc buffer;
     int ptDataBlock = -1;
     int i = 0;
     int metadataFound = 0;
+    int previousBlock = -1;
 
-    printf("Starting file creation with %d blocks\n", nbrbloc);
+    // Get file metadata (e.g., file size, name, etc.)
+    fichiermetadonnes metadonnes;
+    printf("Donner le nom du fichier : \n");
+    scanf("%19s", metadonnes.Nomdufichier);
+
+    printf("Donner la taille de fichier en enregistrements : \n");
+    scanf("%d", &metadonnes.Taillefichierenregistrements);
+
+    // Calculate the number of blocks needed
+    int taille = metadonnes.Taillefichierenregistrements / 20 + (metadonnes.Taillefichierenregistrements % 20 != 0);
+    metadonnes.Taillefichierblocs = taille;
+    metadonnes.Taillefichierenregistrements = 0;
+
+    printf("Starting file creation with %d blocks\n", taille);
 
     // Check if there is enough space
-    if (!verifierEspaceSuffisant(disque, nbrbloc)) {
+    if (!verifierEspaceSuffisant(disque, taille)) {
         printf("Espace insuffisant.\n");
         return;
     }
@@ -1675,50 +1690,74 @@ void creationL_OF(FILE *disque, int nbrbloc) {
         return;
     }
 
-    // Find an empty block for data
-    for (i = 2; i < MAX_BLOCKS; i++) {
+    // Allocate and initialize data blocks
+    for (i = 0; i < taille; i++) {
+        // Find an empty block for data
+        for (int j = 2; j < MAX_BLOCKS; j++) {
+            fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
+            fread(&buffer, sizeof(Bloc), 1, disque);
+
+            if (buffer.content.allocation.tablelocation[j].etat == 0) {
+                ptDataBlock = j;
+                printf("Found empty data block at index %d\n", ptDataBlock);
+                break;
+            }
+        }
+
+        if (ptDataBlock == -1) {
+            printf("No available blocks in MS.\n");
+            return;
+        }
+
+        // Initialize data block
+        buffer.typedebloc = 2; // Set as data block
+        buffer.content.fileData.nbrmaladie = 0;
+        buffer.content.fileData.next = -1; // Initially, no next block
+
+        // If this is not the first block, link it to the previous block
+        if (previousBlock != -1) {
+            fseek(disque, previousBlock * sizeof(Bloc), SEEK_SET);
+            fread(&buffer, sizeof(Bloc), 1, disque);
+            buffer.content.fileData.next = ptDataBlock; // Link previous block to this block
+            fseek(disque, previousBlock * sizeof(Bloc), SEEK_SET);
+            fwrite(&buffer, sizeof(Bloc), 1, disque);
+        }
+
+        // Write the current block
+        fseek(disque, ptDataBlock * sizeof(Bloc), SEEK_SET);
+        fwrite(&buffer, sizeof(Bloc), 1, disque);
+
+        // Update allocation table
         fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
         fread(&buffer, sizeof(Bloc), 1, disque);
 
-        if (buffer.content.allocation.tablelocation[i].etat == 0) {
-            ptDataBlock = i;
-            printf("Found empty data block at index %d\n", ptDataBlock);
-            break;
-        }
+        buffer.content.allocation.tablelocation[ptDataBlock].etat = 1;
+        buffer.content.allocation.nbrblocutil++;
+
+        fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
+        fwrite(&buffer, sizeof(Bloc), 1, disque);
+
+        // Update previous block pointer
+        previousBlock = ptDataBlock;
     }
-
-    if (ptDataBlock == -1) {
-        printf("No available blocks in MS.\n");
-        return;
-    }
-
-    // Initialize data block
-    buffer.typedebloc = 2; // Set as data block
-    buffer.content.fileData.nbrmaladie = 0;
-    buffer.content.fileData.next = -1;
-
-    fseek(disque, ptDataBlock * sizeof(Bloc), SEEK_SET);
-    fwrite(&buffer, sizeof(Bloc), 1, disque);
 
     // Update metadata
     fseek(disque, metadataBlockIndex * sizeof(Bloc), SEEK_SET);
     fread(&buffer, sizeof(Bloc), 1, disque);
 
-    buffer.content.metadataTable.T[buffer.content.metadataTable.nbrMetadonnees].Adrpremierbloc = ptDataBlock;
+    buffer.content.metadataTable.T[buffer.content.metadataTable.nbrMetadonnees].Adrpremierbloc = previousBlock;
     buffer.content.metadataTable.nbrMetadonnees++;
 
     fseek(disque, metadataBlockIndex * sizeof(Bloc), SEEK_SET);
     fwrite(&buffer, sizeof(Bloc), 1, disque);
 
-    // Update allocation table
-    fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
-    fread(&buffer, sizeof(Bloc), 1, disque);
-
-    buffer.content.allocation.tablelocation[ptDataBlock].etat = 1;
-    buffer.content.allocation.nbrblocutil++;
-
-    fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
-    fwrite(&buffer, sizeof(Bloc), 1, disque);
+    // Add file metadata to the metadata block
+    bool succes = ajoutermetadonnes(disque, metadonnes, taille);
+    if (succes) {
+        printf("Le fichier '%s' a ete cree avec succes.\n", metadonnes.Nomdufichier);
+    } else {
+        printf("Erreur : espace insuffisant pour creer le fichier '%s'.\n", metadonnes.Nomdufichier);
+    }
 
     printf("File creation completed successfully.\n");
 }
