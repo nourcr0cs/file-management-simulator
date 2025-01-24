@@ -626,7 +626,7 @@ scanf("%d",&choix);
                  scan("%s",&nomfichier);
                 int ID;
                 scan("%d",ID)
-                  rechercheparid(disque, ms ); 
+                  rechercheparid(disque, idRecherche ); 
             
                
                 break;
@@ -637,7 +637,7 @@ scanf("%d",&choix);
                  scan("%s",&nomfichier);
               
                 //  le fichier en fonction des choix d'organisation
-                IsererEnregistrement(disque,nomfichier);
+                IsererEnregistrement(disque,id);
                 break;
             case 7:
                 print("Suppression d'enregistrement\n");
@@ -656,7 +656,7 @@ scanf("%d",&choix);
                 string nomfichier;
                 // le fichier en fonction des choix d'organisation
                 scan("%s",&nomfichier);
-                defragmentation(disque,ms);
+                defragmentation(disque;
                 
                 break;
             case 9:
@@ -664,7 +664,7 @@ scanf("%d",&choix);
                 print("donner  le nom du fichier");
                 scan("%s",fichiern);
                 // le fichier en fonction des choix d'organisation
-                    Supprimerfichier(disque,fichiern);
+                    Supprimerfichier(disque,nomFichier);
                 break;
             case 10:
                 print("Renommage de fichier\n");
@@ -692,7 +692,7 @@ scanf("%d",&choix);
                 int id  ;
                 print("Donner  le id de votre enregistrement : ");
                 scan("%d", &id);
-                SuppressionLogique(disque , id,nomfichier);
+                SuppressionLogique(disque , id);
                  
                
             case 0:
