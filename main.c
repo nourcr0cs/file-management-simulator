@@ -291,266 +291,542 @@ void gererEspace(Bloc* blocs, int nbrBlocs, BlocAllocation* allocation, int nomb
     printf("Erreur : Espace insuffisant même après compactage. La mémoire secondaire est pleine.\n");
 }
 
-int main(){
 
-int modeI,modeG;
-File* disque;
-int choix ;
- printf("\n--- Gestion de la Mémoire Secondaire ---\n");
-        printf("1. Initialiser la mémoire secondaire\n");
-        printf("2. Créer un fichier\n");
-        printf("3. Afficher l'état de la mémoire secondaire\n");
-        printf("4. Afficher les métadonnées des fichiers\n");
-        printf("5. Rechercher un enregistrement\n");
-        printf("6. Insérer un nouvel enregistrement\n");
-        printf("7. Supprimer un enregistrement\n");
-        printf("8. Défragmenter un fichier\n");
-        printf("9. Supprimer un fichier\n");
-        printf("10. Renommer un fichier\n");
-        printf("11. Compacter la mémoire secondaire\n");
-        printf("12. Vider la mémoire secondaire\n");
-        printf("13. suppression logique de fichier\n");
-        printf("0. Quitter\n");
-        printf("Votre choix : ");
-        scanf("%d", &choix);
+
+//--------le mennu interactif(le programme principale ----------------------------------------------------------------------------------------------------------------------------
+int  main (){
+    int modeoI,modeoG ;
+    MS ms ;
+    int nbrBloc,nbrBlocs ;
+    bloc blocs;
+    BlocAllocation* allocation;
+    printf ("give the global organisation of ur file");//demander le mode org globale
+    scanf("%d",&modeoG);
+     printf ("give the internel organisation of ur file");//demander le mode d organisation interne
+    scanf ("%d",&modeoI);
+    if( modeoG == 0 ){
+        if (modeoI==1)
+        {
+            modeoG = 1 ;//metre le modeG a 1 pour distinguer les cas 
+        }
+    }
+      if( modeoG == 1 ){
+        if (modeoI==1)
+        {
+            modeoG = 3 ;//metre le modeG a 3 pour distinguer les cas 
+        }else {
+            modeoG = 2 ;
+        }
+    }
+    /*sortir de ces deux if avec les cas suivant si mmodeoG = 0 et modeoI = 0 alors modeoG = 0
+    si mmodeoG = 0 et modeoI = 1 alors modeoG = 1 . si mmodeoG = 1 et modeoI = 0 alors modeoG  . si mmodeoG = 0 et modeoI = 0 alors modeoG = 3*/
+   
+
+   //un switch pour le choix de l organisation 
+  switch (modeoG)
+     {
+    case 0 :
+        print("choisisser l'opeartion ");
+        scan("%d",&choix);
+        print("\n--- Gestion de la Mémoire Secondaire ---\n");
+        print("1. Initialiser la mémoire secondaire\n");
+        print("2. Créer un fichier\n");
+        print("3. Afficher l'état de la mémoire secondaire\n");
+        print("4. Afficher les métadonnées des fichiers\n");
+        print("5. Rechercher un enregistrement\n");
+        print("6. Insérer un nouvel enregistrement\n");
+        print("7. Supprimer un enregistrement\n");
+        print("8. Défragmenter un fichier\n");
+        print("9. Supprimer un fichier\n");
+        print("10. Renommer un fichier\n");
+        print("11. Compacter la mémoire secondaire\n");
+        print("12. Vider la mémoire secondaire\n");
+        print("13. suppression logique de fichier\n");
+        print("0. Quitter\n");
+        print("Votre choix : ");
+        scan("%d", &choix);
 
  
 scanf("%d",&choix);
  switch(choix) {
             case 1:
-                printf("Initialisation de la mémoire secondaire\n");
+                print("Initialisation de la mémoire secondaire\n");
                 InitMs(&disque, 20);
                 break;
             case 2:
-                printf("Création d'un fichier\n");
-                printf("Votre choix d'organisation globale: ");
-                scanf("%d", &modeG);
-                printf("Votre choix d'organisation interne: ");
-                scanf("%d", &modeI);
+                print("Création d'un fichier\n");
                 // Créer le fichier en fonction des choix d'organisation
+            
+                creerfichierCO(FILE* disque); 
                 
-              if(modeG=0){
-                 if(modeI=0){
-                    creerfichierCO(FILE* disque); 
-                 }
-                 else{
-                    creationLL_OF(disque,ms,nbrbloc);
-                 }
-              }else 
-              {
-                 if(modeI=0){
-                      creerFichier(disque);
-                  }else {
-                      chargerFileTNOF(disque);
-                  }  
-              }
                 break;
             case 3:
                 // Afficher l'état de la mémoire secondaire
                 afficherEtatMemoire(NULL); // Exemple d'appel
                 break;
             case 4:
-                printf("Afficher les détails de la mémoire secondaire :\n");
+                print("Afficher les détails de la mémoire secondaire :\n");
                 afficherEtatFichier( blocs, nbrBlocs, allocation);
                 break;
             case 5:
-                printf("Recherche d'enregistrement\n");
-                printf("Votre choix d'organisation globale: ");
-                scanf("%d", &modeG);
-                printf("Votre choix d'organisation interne: ");
-                scanf("%d", &modeI);
-                
-              if(modeG=0){
-                 if(modeI=0){
+                print("Recherche d'enregistrement\n");
+                print("Donnez le nom de fichier  ");
+                 string  nomfichier ;
+                 scan("%s",&nomfichier);
                 int ID;
-                scanf("%d",ID)
+                scan("%d",ID)
                   rechercheebregistrement(disque,nomfichier,ID); 
-                 }
-                 else{
-                    researchDis(disque,ms,fichernom) ;
-                 }
-              }else 
-              {
-                 if(modeI=0){
-                     int id;
-                     sacanf("%d",&id)
-                      rechercherparid(disque,id);
-                  }else {
-                      int id;
-                      scanf("%d",&id);
-                      RechercheFILETOF(disque,id);
-                  }  
-              }
+            
+               
                 break;
             case 6:
-                printf("Insertion d'enregistrement\n");
-               
-                printf("Votre choix d'organisation globale: ");
-                scanf("%d", &modeG);
-                printf("Votre choix d'organisation interne: ");
-                scanf("%d", &modeI);
-                 printf("Donnez le nom de fichier  ");
+                print("Insertion d'enregistrement\n");
+                 print("Donnez le nom de fichier  ");
                  string  nomfichier ;
-                 scanf("%s",&nomfichier);
-                scanf("%d", &modeI);
+                 scan("%s",&nomfichier);
+              
                 //  le fichier en fonction des choix d'organisation
-              if(modeG=0){
-                 if(modeI=0){
-                     insertionenregistrement(disque,nomfichier);
-                 }
-                 else{
-                    insertDis(disque,searchld,nomfichier) ;
-                 }
-              }else 
-              {
-                 if(modeI=0){
-                     IsererEnregistrement(disque,nomfichier,ms);
-                  }else {
-                     IsertiofileTNOF(disque,nomfichier);
-                  }  
-              }
+             
+                    insertionenregistrement(disque,nomfichier);
+              
                 break;
             case 7:
-                printf("Suppression d'enregistrement\n");
-                
-                printf("Votre choix d'organisation globale: ");
-                scanf("%d", &modeG);
-                printf("Votre choix d'organisation interne: ");
-                scanf("%d", &modeI);
-                 printf("Votre nom de fichier: ");
-                scanf("%d", &filename);
+                print("Suppression d'enregistrement\n");
+                print("Votre nom de fichier: ");
+                scan("%d", &filename);
                 // le fichier en fonction des choix d'organisation
                 //supretio physique
-              if(modeG=0){
-                 if(modeI=0){
-                     suprimereregistrement(disque,fileame,ID);
-                 }
-                 else{
-                     suppPhysique(disque,ms,fileame);
-                 }
-              }else 
-              {
-                 if(modeI=0){
-                     int id  ;
-                     scanf("%d",&id);
-                      supretionPhysique(disque,id,ms);
-                  }else {
-                      supprPhysiqueDefichierTNOF(disque,filename);
-                  }  
-              }
+                  suprimereregistrement(disque,fileame,ID);
+                
                 break;
             case 8:
-                printf("Défragmentation effectuée\n");
-                 
-                printf("Votre choix d'organisation globale: ");
-                scanf("%d", &modeG);
-                printf("Votre choix d'organisation interne: ");
-                scanf("%d", &modeI);
+                print("Défragmentation effectuée\n");
                 string nomfichier;
                 // le fichier en fonction des choix d'organisation
-              if(modeG=0){
-                 if(modeI=0){
-                     
-                     scanf("%s",&nomfichier);
-                     defragmentation(disque,nomfichier);
-                 }
-                 else{
-                      printf("donner nom fichier: ");
-                      scanf("%s", &nomfichier);
-                     defragmentation(disque,ms,nomfichier);
-                 }
-              }else 
-              {
-                 if(modeI=0){
-                      defragmentation(disque,ms);
-                  }else {
-                      defragmetationFileTNOF(disque);
-                  }  
-              }
+                scan("%s",&nomfichier);
+                defragmentation(disque,nomfichier);
+                
                 break;
             case 9:
-                printf("Suppression de fichier\n");
-                printf("Votre choix d'organisation globale: ");
-                scanf("%d", &modeG);
-                printf("Votre choix d'organisation interne: ");
-                scanf("%d", &modeI);
-                printf("donner  le nom du fichier");
+                print("Suppression de fichier\n");
+                print("donner  le nom du fichier");
                 scan("%s",fichiern);
                 // le fichier en fonction des choix d'organisation
-              if(modeG=0){
-                 if(modeI=0){
                      suprimerFCO(disque,fichiern);
-                 }
-                 else{
-                     deleteL_OF(disque,fichiern);
-                 }
-              }else 
-              {
-                 if(modeI=0){
-                      Supprimerfichier(disque,fichiern);
-                      
-                  }else {
-                      supprPhysiqueTNOF(disque,id);
-                  }  
-              }
+                 
                 break;
             case 10:
-                printf("Renommage de fichier\n");
+                print("Renommage de fichier\n");
                 string  newname,lastname;
-                printf("donner  le nom du fichier que  vous voulez change son nom");
-                scanf("%s",&lastname);
-                printf("donner le nouveau nom");
-                scanf("%s",&newname);
+                print("donner  le nom du fichier que  vous voulez change son nom");
+                scan("%s",&lastname);
+                print("donner le nouveau nom");
+                scan("%s",&newname);
                 changeFileName( disque ,newname ,lastname );
                 
                 break;
             case 11:
-                printf("Compactage de la mémoire secondaire\n");
+                print("Compactage de la mémoire secondaire\n");
                 // Appeler la fonction de compactage
                 compactage( blocs, nbrBlocs, allocation);
                 break;
             case 12:
-                printf("Mémoire secondaire vidée\n");
+                print("Mémoire secondaire vidée\n");
                 viderMS(disque, 20);
                 break;
             case  13:
-                printf("suppretion logique d'enregistrement");
+                print("suppretion logique d'enregistrement");
                 string nomfichier;
-                sacnf("%d",&nomfichier);
-                 printf("Création d'un fichier\n");
-                printf("Votre choix d'organisation globale: ");
-                scanf("%d", &modeG);
-                printf("Votre choix d'organisation interne: ");
-                scanf("%d", &modeI);
-                string nomfichier;
-                printf("VDoer le   nom de  fichier: ");
-                scanf("%s", &nomfichier);
+                sacn("%d",&nomfichier);
                 int id  ;
-                printf("Donner  le id de votre enregistrement : ");
-                scanf("%d", &id);
-              if(modeG=0){
-                 if(modeI=0){
-                    suppretionLogique(disque , id,nomfichier);
-                 }
-                 else{
-                     string nomfichier;
-                     scanf("%s",&nomfichier);
-                    suppLogique(disque , id,nomfichier);
-                 }
-              }else 
-              {
-                 if(modeI=0){
-                      SuppressionLogique(disque,id,ms);
-                  }else {
-                      supprLogiqueFileTNOF(disque,id);
-                  }  
-              }
+                print("Donner  le id de votre enregistrement : ");
+                scan("%d", &id);
+                suppretionLogique(disque , id,nomfichier);
+                 
+               
             case 0:
-                printf("Programme terminé !\n");
+                print("Programme terminé !\n");
                 break;
             default:
-                printf("Choix invalide. Veuillez réessayer.\n");
+                print("Choix invalide. Veuillez réessayer.\n");
         }
     } while (choix != 0);
-return 0;
+    break;
+    case 1 : 
+     print("choisisser l'opeartion ");
+        scan("%d",&choix);
+        print("\n--- Gestion de la Mémoire Secondaire ---\n");
+        print("1. Initialiser la mémoire secondaire\n");
+        print("2. Créer un fichier\n");
+        print("3. Afficher l'état de la mémoire secondaire\n");
+        print("4. Afficher les métadonnées des fichiers\n");
+        print("5. Rechercher un enregistrement\n");
+        print("6. Insérer un nouvel enregistrement\n");
+        print("7. Supprimer un enregistrement\n");
+        print("8. Défragmenter un fichier\n");
+        print("9. Supprimer un fichier\n");
+        print("10. Renommer un fichier\n");
+        print("11. Compacter la mémoire secondaire\n");
+        print("12. Vider la mémoire secondaire\n");
+        print("13. suppression logique de fichier\n");
+        print("0. Quitter\n");
+        print("Votre choix : ");
+        scan("%d", &choix);
+
+ 
+scanf("%d",&choix);
+ switch(choix) {
+            case 1:
+                print("Initialisation de la mémoire secondaire\n");
+                InitMs(&disque, 20);
+                break;
+            case 2:
+                print("Création d'un fichier\n");
+                // Créer le fichier en fonction des choix d'organisation
+            
+                creationLL_OF(disque , ms , nbrBloc); 
+                
+                break;
+            case 3:
+                // Afficher l'état de la mémoire secondaire
+                afficherEtatMemoire(NULL); // Exemple d'appel
+                break;
+            case 4:
+                print("Afficher les détails de la mémoire secondaire :\n");
+                afficherEtatFichier( blocs, nbrBlocs, allocation);
+                break;
+            case 5:
+                print("Recherche d'enregistrement\n");
+                print("Donnez le nom de fichier  ");
+                 string  nomfichier ;
+                 scan("%s",&nomfichier);
+                int ID;
+                scan("%d",ID)
+                  researchDis(disque, ms ,nomfichier); 
+            
+               
+                break;
+            case 6:
+                print("Insertion d'enregistrement\n");
+                 print("Donnez le nom de fichier  ");
+                 string  nomfichier ;
+                 scan("%s",&nomfichier);
+              
+                //  le fichier en fonction des choix d'organisation
+                insertDis(disque,nomchifier);
+                break;
+            case 7:
+                print("Suppression d'enregistrement\n");
+                print("Votre nom de fichier: ");
+                scan("%d", &filename);
+                // le fichier en fonction des choix d'organisation
+                //supretio physique
+                  suppPhysique(disque,ms,fileame);
+                
+                break;
+            case 8:
+                print("Défragmentation effectuée\n");
+                string nomfichier;
+                // le fichier en fonction des choix d'organisation
+                scan("%s",&nomfichier);
+                defragmentation(disque,ms,nomfichier);
+                
+                break;
+            case 9:
+                print("Suppression de fichier\n");
+                print("donner  le nom du fichier");
+                scan("%s",fichiern);
+                // le fichier en fonction des choix d'organisation
+                     deleteL_OF(disque,fichiern);
+                break;
+            case 10:
+                print("Renommage de fichier\n");
+                string  newname,lastname;
+                print("donner  le nom du fichier que  vous voulez change son nom");
+                scan("%s",&lastname);
+                print("donner le nouveau nom");
+                scan("%s",&newname);
+                changeFileName( disque ,newname ,lastname );
+                
+                break;
+            case 11:
+                print("Compactage de la mémoire secondaire\n");
+                // Appeler la fonction de compactage
+                compactage( blocs, nbrBlocs, allocation);
+                break;
+            case 12:
+                print("Mémoire secondaire vidée\n");
+                viderMS(disque, 20);
+                break;
+            case  13:
+                print("suppretion logique d'enregistrement");
+                string nomfichier;
+                sacn("%d",&nomfichier);
+                int id  ;
+                print("Donner  le id de votre enregistrement : ");
+                scan("%d", &id);
+                suppLogique(disque , id,nomfichier);
+                 
+               
+            case 0:
+                print("Programme terminé !\n");
+                break;
+            default:
+                print("Choix invalide. Veuillez réessayer.\n");
+        }
+    } while (choix != 0);
+    break;
+    case 2 :
+     print("choisisser l'opeartion ");
+        scan("%d",&choix);
+        print("\n--- Gestion de la Mémoire Secondaire ---\n");
+        print("1. Initialiser la mémoire secondaire\n");
+        print("2. Créer un fichier\n");
+        print("3. Afficher l'état de la mémoire secondaire\n");
+        print("4. Afficher les métadonnées des fichiers\n");
+        print("5. Rechercher un enregistrement\n");
+        print("6. Insérer un nouvel enregistrement\n");
+        print("7. Supprimer un enregistrement\n");
+        print("8. Défragmenter un fichier\n");
+        print("9. Supprimer un fichier\n");
+        print("10. Renommer un fichier\n");
+        print("11. Compacter la mémoire secondaire\n");
+        print("12. Vider la mémoire secondaire\n");
+        print("13. suppression logique de fichier\n");
+        print("0. Quitter\n");
+        print("Votre choix : ");
+        scan("%d", &choix);
+
+ 
+scanf("%d",&choix);
+ switch(choix) {
+            case 1:
+                print("Initialisation de la mémoire secondaire\n");
+                InitMs(&disque, 20);
+                break;
+            case 2:
+                print("Création d'un fichier\n");
+                // Créer le fichier en fonction des choix d'organisation
+            
+                creerFichier(disque ); 
+                
+                break;
+            case 3:
+                // Afficher l'état de la mémoire secondaire
+                afficherEtatMemoire(NULL); // Exemple d'appel
+                break;
+            case 4:
+                print("Afficher les détails de la mémoire secondaire :\n");
+                afficherEtatFichier( blocs, nbrBlocs, allocation);
+                break;
+            case 5:
+                print("Recherche d'enregistrement\n");
+                print("Donnez le nom de fichier  ");
+                 string  nomfichier ;
+                 scan("%s",&nomfichier);
+                int ID;
+                scan("%d",ID)
+                  rechercheparid(disque, ms ); 
+            
+               
+                break;
+            case 6:
+                print("Insertion d'enregistrement\n");
+                 print("Donnez le nom de fichier  ");
+                 string  nomfichier ;
+                 scan("%s",&nomfichier);
+              
+                //  le fichier en fonction des choix d'organisation
+                IsererEnregistrement(disque,nomfichier);
+                break;
+            case 7:
+                print("Suppression d'enregistrement\n");
+                print("Votre nom de fichier: ");
+                scan("%d", &filename);
+                // le fichier en fonction des choix d'organisation
+                //supretio physique
+                int id ;
+                print("donner le id");
+                scan("%d",&id);
+                  supretionPhsique(disque,id ,ms)
+                
+                break;
+            case 8:
+                print("Défragmentation effectuée\n");
+                string nomfichier;
+                // le fichier en fonction des choix d'organisation
+                scan("%s",&nomfichier);
+                defragmentation(disque,ms);
+                
+                break;
+            case 9:
+                print("Suppression de fichier\n");
+                print("donner  le nom du fichier");
+                scan("%s",fichiern);
+                // le fichier en fonction des choix d'organisation
+                    Supprimerfichier(disque,fichiern);
+                break;
+            case 10:
+                print("Renommage de fichier\n");
+                string  newname,lastname;
+                print("donner  le nom du fichier que  vous voulez change son nom");
+                scan("%s",&lastname);
+                print("donner le nouveau nom");
+                scan("%s",&newname);
+                changeFileName( disque ,newname ,lastname );
+                
+                break;
+            case 11:
+                print("Compactage de la mémoire secondaire\n");
+                // Appeler la fonction de compactage
+                compactage( blocs, nbrBlocs, allocation);
+                break;
+            case 12:
+                print("Mémoire secondaire vidée\n");
+                viderMS(disque, 20);
+                break;
+            case  13:
+                print("suppretion logique d'enregistrement");
+                string nomfichier;
+                sacn("%d",&nomfichier);
+                int id  ;
+                print("Donner  le id de votre enregistrement : ");
+                scan("%d", &id);
+                SuppressionLogique(disque , id,nomfichier);
+                 
+               
+            case 0:
+                print("Programme terminé !\n");
+                break;
+            default:
+                print("Choix invalide. Veuillez réessayer.\n");
+        }
+    } while (choix != 0);
+    break;
+    case 3 : 
+     print("choisisser l'opeartion ");
+        scan("%d",&choix);
+        print("\n--- Gestion de la Mémoire Secondaire ---\n");
+        print("1. Initialiser la mémoire secondaire\n");
+        print("2. Créer un fichier\n");
+        print("3. Afficher l'état de la mémoire secondaire\n");
+        print("4. Afficher les métadonnées des fichiers\n");
+        print("5. Rechercher un enregistrement\n");
+        print("6. Insérer un nouvel enregistrement\n");
+        print("7. Supprimer un enregistrement\n");
+        print("8. Défragmenter un fichier\n");
+        print("9. Supprimer un fichier\n");
+        print("10. Renommer un fichier\n");
+        print("11. Compacter la mémoire secondaire\n");
+        print("12. Vider la mémoire secondaire\n");
+        print("13. suppression logique de fichier\n");
+        print("0. Quitter\n");
+        print("Votre choix : ");
+        scan("%d", &choix);
+
+ 
+scanf("%d",&choix);
+ switch(choix) {
+            case 1:
+                print("Initialisation de la mémoire secondaire\n");
+                InitMs(&disque, 20);
+                break;
+            case 2:
+                print("Création d'un fichier\n");
+                // Créer le fichier en fonction des choix d'organisation
+            
+                chargerFileTNOF(disque , ms , nbrBloc); 
+                
+                break;
+            case 3:
+                // Afficher l'état de la mémoire secondaire
+                afficherEtatMemoire(NULL); // Exemple d'appel
+                break;
+            case 4:
+                print("Afficher les détails de la mémoire secondaire :\n");
+                afficherEtatFichier( blocs, nbrBlocs, allocation);
+                break;
+            case 5:
+                print("Recherche d'enregistrement\n");
+                print("Donnez le nom de fichier  ");
+                 string  nomfichier ;
+                 scan("%s",&nomfichier);
+                int ID;
+                scan("%d",ID)
+                  RechercheFILETOF(disque, ID); ////yousraaaa
+            
+               
+                break;
+            case 6:
+                print("Insertion d'enregistrement\n");
+                 print("Donnez le nom de fichier  ");
+                 string  nomfichier ;
+                 scan("%s",&nomfichier);
+              
+                //  le fichier en fonction des choix d'organisation
+                insertioFileTNOF(disque,nomchifier);
+                break;
+            case 7:
+                print("Suppression d'enregistrement\n");
+                print("Votre nom de fichier: ");
+                scan("%d", &filename);
+                // le fichier en fonction des choix d'organisation
+                //supretio physique
+                  supprPhysiqueDefichierTNOF(disque,fileame);
+                
+                break;
+            case 8:
+                print("Défragmentation effectuée\n");
+                string nomfichier;
+                // le fichier en fonction des choix d'organisation
+                scan("%s",&nomfichier);
+                defragmentationFileTNOF(disque,ms,nomfichier);
+                
+                break;
+            case 9:
+                print("Suppression de fichier\n");
+                print("donner  le nom du fichier");
+                scan("%s",fichiern);
+                // le fichier en fonction des choix d'organisation
+                    supprPhysiqueTNOF(disque,fichiern);//supp du phichier yousraaaaa
+                break;
+            case 10:
+                print("Renommage de fichier\n");
+                string  newname,lastname;
+                print("donner  le nom du fichier que  vous voulez change son nom");
+                scan("%s",&lastname);
+                print("donner le nouveau nom");
+                scan("%s",&newname);
+                changeFileName( disque ,newname ,lastname );
+                
+                break;
+            case 11:
+                print("Compactage de la mémoire secondaire\n");
+                // Appeler la fonction de compactage
+                compactage( blocs, nbrBlocs, allocation);
+                break;
+            case 12:
+                print("Mémoire secondaire vidée\n");
+                viderMS(disque, 20);
+                break;
+            case  13:
+                print("suppretion logique d'enregistrement");
+                string nomfichier;
+                sacn("%d",&nomfichier);
+                int id  ;
+                print("Donner  le id de votre enregistrement : ");
+                scan("%d", &id);
+                supprLogiqueFileTOF(disque , id,nomfichier);
+                 
+               
+            case 0:
+                print("Programme terminé !\n");
+                break;
+            default:
+                print("Choix invalide. Veuillez réessayer.\n");
+        }
+    } while (choix != 0);
+    break;
+  }
+retur 0;
 }
