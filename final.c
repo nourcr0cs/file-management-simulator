@@ -6,6 +6,7 @@
 #include <stdio.h>
 
 
+#define FB 20
 
     typedef struct {
         char Nomdufichier[20];
@@ -2839,7 +2840,8 @@ void gererEspace(FILE*disque,int nbrblocrequise) {
 
 }
 
-void afficherEtatMs(FILE*disque){}
+void afficherEtatMs(FILE*disque){
+}
 
 
 
