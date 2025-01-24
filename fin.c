@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <math.h>
 #include <stdio.h>
+#include <emscripten.h>
 
 
 #define MAX_BLOCKS 20
@@ -78,6 +79,7 @@
 
 
     // Function to check if there is enough space for the requested number of blocks
+    EMSCRIPTEN_KEEPALIVE
     bool verifierEspaceSuffisant(FILE* disque, int nbrBlocsVoulu) {
         Bloc buffer;
         rewind(disque);
@@ -102,6 +104,7 @@
    }
 
    // Function to obtain the number of blocks based on the option provided
+   EMSCRIPTEN_KEEPALIVE
    int obtenirNombreBlocs(FILE* disque, int option) {
        Bloc buffer;
        buffer.typedebloc=3;
@@ -127,6 +130,7 @@
    }
 
    // Function to update the number of blocks used or total blocks
+   EMSCRIPTEN_KEEPALIVE
    void mettreAJourNombreBlocs(FILE* disque, int option, int nouvelleValeur) {
        Bloc buffer;
 
@@ -159,6 +163,7 @@
       fwrite(&buffer, sizeof(Bloc), 1, disque);
    }
 
+   EMSCRIPTEN_KEEPALIVE
    void metajourtableallocation(FILE* disque, int blocIndex, int etat) {
        Bloc buffer;
        buffer.typedebloc=3;
@@ -179,6 +184,7 @@
    }
 
    // Function to create the allocation table in the first block
+   EMSCRIPTEN_KEEPALIVE
    void CreeTableAllocation( FILE* disque) {
        Bloc buffer;
        rewind(disque);
@@ -211,8 +217,9 @@
    }
 
    // Function to clear memory space by resetting block usage counts and allocation table
+   EMSCRIPTEN_KEEPALIVE
    void ViderMs(FILE* disque) {
-    Bloc buffer = {0}; // Initialiser un bloc vide (toutes valeurs � 0/null)
+    Bloc buffer = {0}; // Initialiser un bloc vide (toutes valeurs 0/null)
     int nombreBlocs = obtenirNombreBlocs(disque, 2); // Obtenir le nombre total de blocs
 
     // Parcourir tous les blocs et les r�initialiser
@@ -229,7 +236,7 @@
 
 
    // Function to initialize memory space with a specified number of blocks
-
+   EMSCRIPTEN_KEEPALIVE
 
    void InitMs(FILE* disque, int nombreBlocs) {
        Bloc buffer = {0};
@@ -266,7 +273,8 @@
 
 
    // Function to add metadata for a file into the system's memory structure
-   bool ajoutermetadonnes(FILE* disque,fichiermetadonnes metadonnes,int taille){
+   EMSCRIPTEN_KEEPALIVE
+    bool ajoutermetadonnes(FILE* disque,fichiermetadonnes metadonnes,int taille){
       Bloc buffer;
       rewind(disque);
 
@@ -301,6 +309,7 @@
    }
 
    // Function to search for metadata by file name and return its address information.
+   EMSCRIPTEN_KEEPALIVE
    adressemetadonnes recherchemetadonnes(FILE* disque, const char* nomfichier) {
        Bloc buffer;
        adressemetadonnes resultat = {-1, -1}; // Initialisation : non trouv�
@@ -342,6 +351,7 @@
 
 
    // Function to read specific metadata characteristics based on given parameter.
+   EMSCRIPTEN_KEEPALIVE
    int liremetadonnes(FILE* disque,const char* nomFichier,int caracteristique ){
         Bloc buffer ;
         adressemetadonnes adresse=recherchemetadonnes(disque ,nomFichier );
@@ -375,7 +385,8 @@
    }
 
    // Function to update metadata after insertion or deletion.
-   void miseAJourMetadonnees(FILE* disque,const char* nomFichier,int champ,int nouvelleValeur){
+   EMSCRIPTEN_KEEPALIVE     
+        void miseAJourMetadonnees(FILE* disque,const char* nomFichier,int champ,int nouvelleValeur){
         adressemetadonnes adresse=recherchemetadonnes(disque ,nomFichier );
         rewind(disque);
         if(adresse.numerodebloc==-1){
@@ -421,6 +432,7 @@
    }
 
    // Function to create a new file and its associated metadata in the system.
+   EMSCRIPTEN_KEEPALIVE
    char* creerfichierCO(FILE* disque){
         char* nomFichier=(char*)malloc(20*sizeof(char));
         if(!nomFichier){
@@ -467,7 +479,8 @@
         }
    }
 
-   void chargerfichier(FILE* disque) {
+   EMSCRIPTEN_KEEPALIVE
+    void chargerfichier(FILE* disque) {
 
        Bloc buffer;
        char* nomFichier;
@@ -566,6 +579,7 @@
        printf("Fichier charge avec succes.\n");
    }
 
+   EMSCRIPTEN_KEEPALIVE
   void defragmentation(FILE *disque, const char *nomFichier) {
     Bloc buffer;             // Buffer pour charger les blocs
     maladie temp[20];        // Tableau temporaire pour r�organiser les enregistrements
@@ -680,6 +694,7 @@
 
 
 
+   EMSCRIPTEN_KEEPALIVE 
 void afficherEnregistrements(FILE* disque, const char* nomFichier) {
     Bloc buffer;
     int blocactuelle = liremetadonnes(disque, nomFichier, 3); // Adresse du premier bloc
@@ -735,6 +750,7 @@ void afficherEnregistrements(FILE* disque, const char* nomFichier) {
 
 
 
+   EMSCRIPTEN_KEEPALIVE
    void insertionenregistrement(FILE*disque,const char* nomFichier)  {
 
    Bloc buffer;
@@ -1145,7 +1161,7 @@ void afficherEnregistrements(FILE* disque, const char* nomFichier) {
   }
 
 
-
+    EMSCRIPTEN_KEEPALIVE
 adressemetadonnes rechercheenregistrement(FILE* disque, const char* nomFichier, int ID) {
     adressemetadonnes adressetrouve = {-1, -1}; // Initialisation � "non trouv�"
     Bloc buffer;
@@ -1187,9 +1203,9 @@ adressemetadonnes rechercheenregistrement(FILE* disque, const char* nomFichier, 
 }
 
 
-
+    EMSCRIPTEN_KEEPALIVE
    void supprimerEnregistrementLogique(FILE *disque, const char *nomFichier, int ID) {
-    // Structure pour stocker les donn�es
+    
     Bloc buffer;
 
     // Rechercher l'enregistrement par son ID
@@ -1226,7 +1242,7 @@ adressemetadonnes rechercheenregistrement(FILE* disque, const char* nomFichier, 
 
 
 
-
+    EMSCRIPTEN_KEEPALIVE
   void  suprimerenregistrementphisique(FILE*disque,const char*nomFichier,int ID) {
 
        Bloc buffer;
@@ -1463,6 +1479,7 @@ adressemetadonnes rechercheenregistrement(FILE* disque, const char* nomFichier, 
   }
 
 
+    EMSCRIPTEN_KEEPALIVE    
   void renommerfichierCO(FILE*disque,const char*nomFichier,const char*nouveaunom)
    {
 
@@ -1493,6 +1510,7 @@ adressemetadonnes rechercheenregistrement(FILE* disque, const char* nomFichier, 
 
 
 
+    EMSCRIPTEN_KEEPALIVE    
   void suprimerFCO(FILE* disque, const char* nomFichier) {
        Bloc buffer;
        int dernierblocmeta = 1; 
@@ -1618,6 +1636,7 @@ adressemetadonnes rechercheenregistrement(FILE* disque, const char* nomFichier, 
 
 
 
+    EMSCRIPTEN_KEEPALIVE
 void creationL_OF(FILE *disque, int nbrbloc) {
     Bloc buffer;
     int ptDataBlock = -1;
@@ -1704,7 +1723,7 @@ void creationL_OF(FILE *disque, int nbrbloc) {
     printf("File creation completed successfully.\n");
 }
 
-// Other functions remain unchanged...
+    EMSCRIPTEN_KEEPALIVE
 void compactage(Tableallocation* blocAlloc) {
     int indexLibre = 0;  // L'indice du prochain bloc vide à remplir
 
@@ -1728,6 +1747,7 @@ void compactage(Tableallocation* blocAlloc) {
 }
 
 
+    EMSCRIPTEN_KEEPALIVE
 void defregmentation(FILE *disque, const char *nomFichier) {
     Bloc buffer;
     int blocactuelle, blocsuivant;
@@ -1788,6 +1808,7 @@ void defregmentation(FILE *disque, const char *nomFichier) {
     printf("La défragmentation a été réalisée avec succès.\n");
 }
 
+    EMSCRIPTEN_KEEPALIVE
 maladie insertHelper() {
     maladie m;
 
@@ -1816,6 +1837,7 @@ maladie insertHelper() {
     return m;
 }
 
+    EMSCRIPTEN_KEEPALIVE    
 void insertDis(FILE *disque, int nbrbloc, const char* nomFichier) {
     Bloc buffer, prevBuffer;
     int lock;
@@ -1897,6 +1919,7 @@ void insertDis(FILE *disque, int nbrbloc, const char* nomFichier) {
     mettreAJourNombreBlocs(disque, 1, nbrBlocsUtilises + 1);
 }
 
+    EMSCRIPTEN_KEEPALIVE
 position researchDis(FILE *disque, int searchId, const char* nomFichier) {
     Bloc buffer;
     position res = {-1, -1};
@@ -1929,6 +1952,7 @@ position researchDis(FILE *disque, int searchId, const char* nomFichier) {
     return res;
 }
 
+    EMSCRIPTEN_KEEPALIVE
 void suppLogique(FILE *disque, int searchId, const char *nomFichier) {
     position res = researchDis(disque, searchId, nomFichier);
     if (res.deplacement != -1) {
@@ -1946,10 +1970,12 @@ void suppLogique(FILE *disque, int searchId, const char *nomFichier) {
     }
 }
 
+    EMSCRIPTEN_KEEPALIVE
 void suppPhysique(FILE *disque, const char *nomFichier) {
     defregmentation(disque, nomFichier);
 }
 
+    EMSCRIPTEN_KEEPALIVE
 void renameFile(FILE *disque, const char *nomFichier, const char *newName) {
     // Check if the file exists
     adressemetadonnes adresse = recherchemetadonnes(disque, nomFichier);
@@ -1973,6 +1999,7 @@ void renameFile(FILE *disque, const char *nomFichier, const char *newName) {
     printf("Fichier renommé en '%s'\n", newName);
 }
 
+    EMSCRIPTEN_KEEPALIVE
 void afficherMemoireSecondaire(FILE* disque, int nombreBlocs) {
     Bloc buffer;
 
@@ -2032,6 +2059,7 @@ void afficherMemoireSecondaire(FILE* disque, int nombreBlocs) {
     printf("========== Fin de l'état de la Mémoire Secondaire ==========\n");
 }
 
+    EMSCRIPTEN_KEEPALIVE
 void MAJtaballocation(FILE* disque, int blocIndex, int etat) {
     Bloc buffer;
     fseek(disque, 0 * sizeof(Bloc), SEEK_SET);
@@ -2047,6 +2075,7 @@ void MAJtaballocation(FILE* disque, int blocIndex, int etat) {
     fwrite(&buffer, sizeof(Bloc), 1, disque);
 }
 
+    EMSCRIPTEN_KEEPALIVE
 bool deleteL_OF(FILE* disque, const char* nomFichier) {
     adressemetadonnes adresse = recherchemetadonnes(disque, nomFichier);
     if (adresse.numerodebloc == -1) {
@@ -2088,6 +2117,7 @@ bool deleteL_OF(FILE* disque, const char* nomFichier) {
     return true;
 }
 
+    EMSCRIPTEN_KEEPALIVE
 void viderMemoireSecondaire(FILE* disque) {
     Bloc buffer;
 
@@ -2134,7 +2164,7 @@ void viderMemoireSecondaire(FILE* disque) {
     printf("Vidage de la mémoire secondaire terminé.\n");
 }
 
-
+    EMSCRIPTEN_KEEPALIVE
 void compactageMemoireSecondaire(FILE* disque) {
     Bloc buffer;
     Tableallocation tableAllocation[MAX_BLOCKS];
@@ -2193,7 +2223,7 @@ void compactageMemoireSecondaire(FILE* disque) {
 }
 
 
-
+    EMSCRIPTEN_KEEPALIVE    
 int main() {
     int choix;
     int modeG, modeI;
