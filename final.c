@@ -1446,15 +1446,6 @@ void afficherEnregistrements(FILE* disque, const char* nomFichier) {
 
 
 
-
-
-
-
-
-
-
-
-
    void insertionenregistrement(FILE*disque,const char* nomFichier)  {
 
    Bloc buffer;
@@ -1508,7 +1499,7 @@ void afficherEnregistrements(FILE* disque, const char* nomFichier) {
         fseek(disque, blocactuelle * sizeof(Bloc), SEEK_SET);
         if (fread(&buffer, sizeof(Bloc), 1, disque) != 1) {
             printf("Erreur : Impossible de lire le bloc %d.\n", blocactuelle);
-            return -1; // Erreur
+            return; // Erreur
         }
 
         if (buffer.content.fileData.next == -1) {
@@ -1518,9 +1509,6 @@ void afficherEnregistrements(FILE* disque, const char* nomFichier) {
 
         blocactuelle = buffer.content.fileData.next;
     }
-
-
-
    // lire le information de la  nouvelle maladie
 
    printf("ID : \n");
@@ -2739,15 +2727,47 @@ position researchDis(FILE *disque, int searchId, const char* nomFichier) {
 
 
 
-void deleteL_OF(FILE*disque,const char*nomFichier){}
+bool deleteL_OF(FILE*disque,const char*nomFichier){
+    adressemetadonnes adresse = recherchemetadonnes(disque, nomFichier);
+    if (adresse.numerodebloc == -1) {
+        printf("Erreur: Fichier introuvable.\n");
+        return false;
+    }
 
+    Bloc buffer;
+    fseek(disque, adresse.numerodebloc * sizeof(Bloc), SEEK_SET);
+    fread(&buffer, sizeof(Bloc), 1, disque);
 
+    int currentBlock = buffer.content.metadataTable.T[adresse.index].Adrpremierbloc;
 
+    while (currentBlock != -1) {
+        fseek(disque, currentBlock * sizeof(Bloc), SEEK_SET);
+        fread(&buffer, sizeof(Bloc), 1, disque);
+        int nextBlock = buffer.content.fileData.next;
 
+        metajourtableallocation(disque, currentBlock, 0);
 
+        currentBlock = nextBlock;
+    }
 
+    fseek(disque, adresse.numerodebloc * sizeof(Bloc), SEEK_SET);
+    fread(&buffer, sizeof(Bloc), 1, disque);
 
+    for (int i = adresse.index; i < buffer.content.metadataTable.nbrMetadonnees - 1; i++) {
+        buffer.content.metadataTable.T[i] = buffer.content.metadataTable.T[i + 1];
+    }
+    buffer.content.metadataTable.nbrMetadonnees--;
 
+    fseek(disque, adresse.numerodebloc * sizeof(Bloc), SEEK_SET);
+    fwrite(&buffer, sizeof(Bloc), 1, disque);
+
+    int blocCount = obtenirNombreBlocs(disque, 1);
+    mettreAJourNombreBlocs(disque, 1, blocCount - 1);
+
+    printf("Fichier '%s' supprimé avec succès.\n", nomFichier);
+    return true;
+
+}
 
 
 
@@ -3125,7 +3145,7 @@ do{
  switch(choix) {
             case 1:
                 printf("Initialisation de la mémoire secondaire\n");
-                InitMs(&disque, 20);
+                InitMs(disque, 20);
                 break;
             case 2:
                 printf("Création d'un fichier\n");
@@ -3251,7 +3271,7 @@ if(modeoG==1 && modeoI==0){
  switch(choix) {
             case 1:
                 printf("Initialisation de la mémoire secondaire\n");
-                InitMs(&disque, 20);
+                InitMs(disque, 20);
                 break;
             case 2:
                 printf("Création d'un fichier\n");
